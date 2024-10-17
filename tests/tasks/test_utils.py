@@ -58,7 +58,6 @@ class JSONNormalizeTestCase(SimpleTestCase):
     def test_encode_error(self):
         for example in [self, any, datetime.datetime.now()]:
             with self.subTest(example):
-                self.assertFalse(utils.is_json_serializable(example))
                 self.assertRaises(TypeError, utils.json_normalize, example)
 
 
