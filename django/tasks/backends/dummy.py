@@ -16,8 +16,8 @@ class DummyBackend(BaseTaskBackend):
     supports_defer = True
     supports_async_task = True
 
-    def __init__(self, options) -> None:
-        super().__init__(options)
+    def __init__(self, alias, params) -> None:
+        super().__init__(alias, params)
 
         self.results = []
 
