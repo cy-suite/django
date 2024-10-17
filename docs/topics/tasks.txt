@@ -175,7 +175,7 @@ Defining tasks
 Tasks are defined using the :meth:`django.tasks.task` decorator on a
 module-level function::
 
-    from django_tasks import task
+    from django.tasks import task
 
 
     @task()
