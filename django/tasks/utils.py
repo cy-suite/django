@@ -7,7 +7,7 @@ from traceback import format_exception
 from django.utils.module_loading import import_string
 
 
-def is_global_function(func):
+def is_module_level_function(func):
     if not inspect.isfunction(func) or inspect.isbuiltin(func):
         return False
 

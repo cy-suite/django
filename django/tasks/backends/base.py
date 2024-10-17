@@ -8,7 +8,7 @@ from django.db import connections
 from django.tasks import DEFAULT_QUEUE_NAME
 from django.tasks.exceptions import InvalidTaskError
 from django.tasks.task import MAX_PRIORITY, MIN_PRIORITY, Task
-from django.tasks.utils import is_global_function
+from django.tasks.utils import is_module_level_function
 from django.utils import timezone
 
 
@@ -48,10 +48,8 @@ class BaseTaskBackend(metaclass=ABCMeta):
         """
         Determine whether the provided task is one which can be executed by the backend.
         """
-        if not is_global_function(task.func):
-            raise InvalidTaskError(
-                "Task function must be a globally importable function"
-            )
+        if not is_module_level_function(task.func):
+            raise InvalidTaskError("Task function must be defined at a module level")
 
         if not self.supports_async_task and iscoroutinefunction(task.func):
             raise InvalidTaskError("Backend does not support async tasks")
