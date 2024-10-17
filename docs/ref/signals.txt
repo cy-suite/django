@@ -712,7 +712,7 @@ Signals sent by the :doc:`tasks </ref/tasks>` framework.
 .. data:: django.tasks.signals.task_enqueued
 
 Sent once a task has been enqueued. If
-:attr:`django.tasks.task.Task.enqueue_on_commit` is set, the signal is only sent
+:attr:`django.tasks.Task.enqueue_on_commit` is set, the signal is only sent
 once the transaction commits successfully.
 
 Arguments that are sent with this signal:
@@ -721,7 +721,7 @@ Arguments that are sent with this signal:
     The backend class which the task was enqueued on to.
 
 ``task_result``
-    The enqueued :class:`TaskResult <django.tasks.task.TaskResult>`.
+    The enqueued :class:`TaskResult <django.tasks.TaskResult>`.
 
 .. data:: django.tasks.signals.task_finished
 
@@ -733,4 +733,4 @@ Arguments that are sent with this signal:
     The backend class which the task was enqueued on to.
 
 ``task_result``
-    The finished :class:`TaskResult <django.tasks.task.TaskResult>`.
+    The finished :class:`TaskResult <django.tasks.TaskResult>`.

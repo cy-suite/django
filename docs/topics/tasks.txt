@@ -133,3 +133,205 @@ Django has developing support for asynchronous task backends.
 ``django.tasks.backends.base.BaseTaskBackend`` has async variants of all base
 methods. By convention, the asynchronous versions of all methods are prefixed
 with ``a``. The arguments for both variants are the same.
+
+Retrieving backends
+-------------------
+
+Backends can be retrieved using the ``tasks`` connection handler::
+
+    from django.tasks import tasks
+
+    tasks["default"]  # The default backend
+    tasks["reserve"]  # Another backend
+
+The "default" backend is available as ``default_task_backend``::
+
+    from django.tasks import default_task_backend
+
+Backend features
+----------------
+
+Django's tasks framework is designed to be backend-agnostic. This means some
+backends may not implement the same features as others, such as executing ``async``
+functions.
+
+Depending on the backend configured, it may be necessary to gracefully degrade
+functionality, or use a system check to prevent the application from starting at all.
+
+To facilitate this, certain features can be checked on a backend:
+
+* :attr:`supports_defer <django.tasks.backends.base.BaseTaskBackend.supports_defer>`:
+  Can tasks be executed after a specific time using ``run_after``?
+
+* :attr:`supports_async_task <django.tasks.backends.base.BaseTaskBackend.supports_async_task>`:
+  Can ``async`` functions (coroutines) be used as task functions?
+
+* :attr:`supports_get_result <django.tasks.backends.base.BaseTaskBackend.supports_get_result>`:
+  Can a task's results be retrieved from another thread or process?
+
+Defining tasks
+==============
+
+Tasks are defined using the :meth:`django.tasks.task` decorator on a
+module-level function::
+
+    from django_tasks import task
+
+
+    @task()
+    def calculate_meaning_of_life(answer=42):
+        return answer
+
+Returned in a :class:`django.tasks.Task` instance.
+
+.. note::
+
+    All arguments and return values must be JSON serializable, and round-trip
+    as the same types.
+
+    This means complex types like model instances, as well as many built-in types
+    like ``datetime`` and ``tuple`` cannot be used in tasks without additional
+    conversion.
+
+The ``task`` decorator accepts a few keyword arguments to customize the task:
+
+* ``priority``: The priority of the task. Higher numbers will be executed sooner.
+
+* ``queue_name``: The name of the queue the task will be executed on
+
+* ``backend``: The name of the backend this task must use (as defined in
+  :setting:`TASKS`).
+
+* ``enqueue_on_commit``: Whether the task is enqueued when the current transaction
+  commits successfully, or enqueued immediately.
+
+These arguments correspond to attributes on the created
+:class:`Task <django.tasks.Task>`.
+
+By convention, tasks should be defined in a ``tasks.py`` file, however this is
+not enforced.
+
+Modifying tasks
+---------------
+
+Before enqueueing tasks, it may be necessary to modify certain parameters of the task.
+For example, to give it a higher priority than it would normally.
+
+A ``Task`` instance cannot be modified directly. Instead, a modified instance
+can be created with the :meth:`using <django.tasks.Task.using>` method, leaving
+the original as-is::
+
+    calculate_meaning_of_life.priority  # 0
+
+    calculate_meaning_of_life.using(priority=10).priority  # 10
+
+``using`` allows modifying the following attributes:
+
+* :attr:`priority <django.tasks.Task.priority>`
+* :attr:`backend <django.tasks.Task.backend>`
+* :attr:`queue_name <django.tasks.Task.queue_name>`
+* :attr:`run_after <django.tasks.Task.run_after>`
+
+``run_after`` may also be provided as a :class:`timedelta <datetime.timedelta>`,
+which is used relative to the current time (when ``using`` is called), or a
+timezone-aware :class:`datetime <datetime.datetime>`.
+
+Enqueueing tasks
+================
+
+To add the task to the queue store, so it will be executed, call the ``enqueue``
+method on it::
+
+    result = calculate_meaning_of_life.enqueue()
+
+Returned is a :class:`django.tasks.TaskResult`, which can be used to retrieve
+the result of the task once it has finished executing.
+
+If the task takes arguments, these can be passed as-is to ``enqueue``::
+
+    result = calculate_meaning_of_life.enqueue(answer=42)
+
+To enqueue tasks in an ``async`` context, :meth:`aenqueue <django.tasks.Task.aenqueue>`
+is available as an ``async`` variant of ``enqueue``.
+
+Transactions
+------------
+
+By default, tasks are enqueued after the current transaction (if there is one)
+commits successfully (using :meth:`transaction.on_commit <django.db.transaction.on_commit>`),
+rather than enqueueing immediately.
+
+This behavior can be changed by changing the :setting:`TASKS-ENQUEUE_ON_COMMIT`
+setting for the backend, or for a specific task using the ``enqueue_on_commit``
+parameter.
+
+Task results
+============
+
+When enqueueing a ``Task``, you receive a :class:`django.tasks.TaskResult`,
+however it's likely useful to retrieve the result from somewhere else (for example
+another request or another task).
+
+Each ``TaskResult`` has a unique :attr:`id <django.tasks.TaskResult.id>`, which
+can be used to identify and retrieve the result once the code which enqueued the
+task has finished.
+
+The :meth:`django.tasks.Task.get_result` method can retrieve a result based on
+its ``id``::
+
+    # Later, somewhere else...
+    result = calculate_meaning_of_life.get_result(result_id)
+
+If the ``TaskResult`` exists, it is returned. If it doesn't exist, or isn't a
+result for ``calculate_meaning_of_life``, :exc:`django.tasks.exceptions.ResultDoesNotExist`
+is raised.
+
+To retrieve a ``TaskResult``, regardless of which kind of ``Task`` it was from,
+use the ``get_result`` method on the API
+
+To retrieve results in an ``async`` context, :meth:`aget_result <django.tasks.Task.aget_result>`
+is available as an ``async`` variant of ``get_result`` on both the backend and ``Task``.
+
+Some backends, such as the built in ``ImmediateBackend`` do not support ``get_result``.
+Calling ``get_result`` on these backends will raise :exc:`NotImplementedError`.
+
+Updating results
+----------------
+
+A ``TaskResult`` contains the status of a task's execution at the point it was
+retrieved. If the task finishes after ``get_result`` is called, it will not update.
+
+To refresh the values, call the :meth:`django.tasks.TaskResult.refresh` method::
+
+    result.status  # RUNNING
+
+    result.refresh()  # or await result.arefresh()
+
+    result.status  # COMPLETE
+
+Return values
+-------------
+
+If your task function returns something, it can be retrieved from the
+:attr:`django.tasks.TaskResult.return_value` attribute::
+
+    result.return_value  # 42
+
+If the task has not finished executing, or has failed, :exc:`ValueError` is raised.
+
+Exceptions
+----------
+
+If the task doesn't complete successfully, and instead raises an exception, either
+as part of the task or as part of running it, the exception instance is saved
+to the :attr:`django.tasks.TaskResult.exception` attribute::
+
+    assert isinstance(result.exception, ValueError)
+
+As part of the serialization process for exceptions, some information is lost.
+The traceback information is reduced to a string which you can use to help
+debugging::
+
+    print(result.traceback)
+
+If the exception could not be serialized, ``exception`` is ``None``.
