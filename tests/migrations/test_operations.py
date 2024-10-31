@@ -6213,6 +6213,42 @@ class OperationTests(OperationTestBase):
         self.assertEqual(pony_new.static, 2)
 
 
+class PrimaryKeyOperations(OperationTestBase):
+    def test_slugfields_change_primary_key_operations(self):
+        # Create a model with two fields
+        operation1 = migrations.CreateModel(
+            "SimpleModel",
+            [
+                ("field1", models.SlugField(max_length=20, primary_key=True)),
+                ("field2", models.SlugField(max_length=20)),
+            ],
+        )
+        # Drop field1 primary key constraint - this doesn't fail
+        operation2 = migrations.AlterField(
+            "SimpleModel",
+            "field1",
+            models.SlugField(max_length=20, primary_key=False),
+        )
+        # Add a primary key constraint to field2 - this fails
+        operation3 = migrations.AlterField(
+            "SimpleModel",
+            "field2",
+            models.SlugField(max_length=20, primary_key=True),
+        )
+
+        project_state = ProjectState()
+        with connection.schema_editor() as editor:
+            new_state = project_state.clone()
+            operation1.state_forwards("migrtest", new_state)
+            operation1.database_forwards("migrtest", editor, project_state, new_state)
+            project_state, new_state = new_state, new_state.clone()
+            operation2.state_forwards("migrtest", new_state)
+            operation2.database_forwards("migrtest", editor, project_state, new_state)
+            project_state, new_state = new_state, new_state.clone()
+            operation3.state_forwards("migrtest", new_state)
+            operation3.database_forwards("migrtest", editor, project_state, new_state)
+
+
 class SwappableOperationTests(OperationTestBase):
     """
     Key operations ignore swappable models
