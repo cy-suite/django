@@ -1,4 +1,5 @@
 import math
+import unittest
 from decimal import Decimal
 
 from django.core.exceptions import FieldDoesNotExist
@@ -6214,6 +6215,7 @@ class OperationTests(OperationTestBase):
 
 
 class PrimaryKeyOperations(OperationTestBase):
+    @unittest.skipUnless(connection.vendor == "postgresql", "PostgreSQL specific")
     def test_slugfields_change_primary_key_operations(self):
         # Create a model with two fields
         operation1 = migrations.CreateModel(
