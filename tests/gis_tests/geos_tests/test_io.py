@@ -28,9 +28,10 @@ class GEOSIOTest(SimpleTestCase):
             self.assertEqual(ref, geom)
 
         # Should only accept string objects.
-        with self.assertRaises(TypeError):
+        msg = "'wkt' must be bytes or str."
+        with self.assertRaisesMessage(TypeError, msg):
             wkt_r.read(1)
-        with self.assertRaises(TypeError):
+        with self.assertRaisesMessage(TypeError, msg):
             wkt_r.read(memoryview(b"foo"))
 
     def test02_wktwriter(self):
