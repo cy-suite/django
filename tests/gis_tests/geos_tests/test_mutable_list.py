@@ -78,22 +78,24 @@ class ListMixinTest(SimpleTestCase):
         "Slice retrieval"
         pl, ul = self.lists_of_len()
         for i in self.limits_plus(1):
-            self.assertEqual(pl[i:], ul[i:], "slice [%d:]" % (i))
-            self.assertEqual(pl[:i], ul[:i], "slice [:%d]" % (i))
+            with self.subTest(i=i):
+                self.assertEqual(pl[i:], ul[i:], "slice [%d:]" % (i))
+                self.assertEqual(pl[:i], ul[:i], "slice [:%d]" % (i))
 
-            for j in self.limits_plus(1):
-                self.assertEqual(pl[i:j], ul[i:j], "slice [%d:%d]" % (i, j))
+                for j in self.limits_plus(1):
+                    self.assertEqual(pl[i:j], ul[i:j], "slice [%d:%d]" % (i, j))
+                    for k in self.step_range():
+                        self.assertEqual(
+                            pl[i:j:k], ul[i:j:k], "slice [%d:%d:%d]" % (i, j, k)
+                        )
+
                 for k in self.step_range():
-                    self.assertEqual(
-                        pl[i:j:k], ul[i:j:k], "slice [%d:%d:%d]" % (i, j, k)
-                    )
-
-            for k in self.step_range():
-                self.assertEqual(pl[i::k], ul[i::k], "slice [%d::%d]" % (i, k))
-                self.assertEqual(pl[:i:k], ul[:i:k], "slice [:%d:%d]" % (i, k))
+                    self.assertEqual(pl[i::k], ul[i::k], "slice [%d::%d]" % (i, k))
+                    self.assertEqual(pl[:i:k], ul[:i:k], "slice [:%d:%d]" % (i, k))
 
         for k in self.step_range():
-            self.assertEqual(pl[::k], ul[::k], "slice [::%d]" % (k))
+            with self.subTest(k=k):
+                self.assertEqual(pl[::k], ul[::k], "slice [::%d]" % (k))
 
     def test02_setslice(self):
         "Slice assignment"
@@ -103,129 +105,136 @@ class ListMixinTest(SimpleTestCase):
 
         pl, ul = self.lists_of_len()
         for slen in range(self.limit + 1):
-            ssl = nextRange(slen)
-            ul[:] = ssl
-            pl[:] = ssl
-            self.assertEqual(pl, ul[:], "set slice [:]")
-
-            for i in self.limits_plus(1):
+            with self.subTest(slen=slen):
                 ssl = nextRange(slen)
-                ul[i:] = ssl
-                pl[i:] = ssl
-                self.assertEqual(pl, ul[:], "set slice [%d:]" % (i))
+                ul[:] = ssl
+                pl[:] = ssl
+                self.assertEqual(pl, ul[:], "set slice [:]")
 
-                ssl = nextRange(slen)
-                ul[:i] = ssl
-                pl[:i] = ssl
-                self.assertEqual(pl, ul[:], "set slice [:%d]" % (i))
-
-                for j in self.limits_plus(1):
+                for i in self.limits_plus(1):
                     ssl = nextRange(slen)
-                    ul[i:j] = ssl
-                    pl[i:j] = ssl
-                    self.assertEqual(pl, ul[:], "set slice [%d:%d]" % (i, j))
+                    ul[i:] = ssl
+                    pl[i:] = ssl
+                    self.assertEqual(pl, ul[:], "set slice [%d:]" % (i))
 
-                    for k in self.step_range():
-                        ssl = nextRange(len(ul[i:j:k]))
-                        ul[i:j:k] = ssl
-                        pl[i:j:k] = ssl
-                        self.assertEqual(pl, ul[:], "set slice [%d:%d:%d]" % (i, j, k))
+                    ssl = nextRange(slen)
+                    ul[:i] = ssl
+                    pl[:i] = ssl
+                    self.assertEqual(pl, ul[:], "set slice [:%d]" % (i))
 
-                        sliceLen = len(ul[i:j:k])
-                        msg = (
-                            f"attempt to assign sequence of size {sliceLen + 1} "
-                            f"to extended slice of size {sliceLen}"
-                        )
-                        with self.assertRaisesMessage(ValueError, msg):
-                            setfcn(ul, i, j, k, sliceLen + 1)
-                        if sliceLen > 2:
+                    for j in self.limits_plus(1):
+                        ssl = nextRange(slen)
+                        ul[i:j] = ssl
+                        pl[i:j] = ssl
+                        self.assertEqual(pl, ul[:], "set slice [%d:%d]" % (i, j))
+
+                        for k in self.step_range():
+                            ssl = nextRange(len(ul[i:j:k]))
+                            ul[i:j:k] = ssl
+                            pl[i:j:k] = ssl
+                            self.assertEqual(
+                                pl, ul[:], "set slice [%d:%d:%d]" % (i, j, k)
+                            )
+
+                            sliceLen = len(ul[i:j:k])
                             msg = (
-                                f"attempt to assign sequence of size {sliceLen - 1} "
+                                f"attempt to assign sequence of size {sliceLen + 1} "
                                 f"to extended slice of size {sliceLen}"
                             )
                             with self.assertRaisesMessage(ValueError, msg):
-                                setfcn(ul, i, j, k, sliceLen - 1)
+                                setfcn(ul, i, j, k, sliceLen + 1)
+                            if sliceLen > 2:
+                                msg = (
+                                    f"attempt to assign sequence of size {sliceLen - 1}"
+                                    f" to extended slice of size {sliceLen}"
+                                )
+                                with self.assertRaisesMessage(ValueError, msg):
+                                    setfcn(ul, i, j, k, sliceLen - 1)
+
+                    for k in self.step_range():
+                        ssl = nextRange(len(ul[i::k]))
+                        ul[i::k] = ssl
+                        pl[i::k] = ssl
+                        self.assertEqual(pl, ul[:], "set slice [%d::%d]" % (i, k))
+
+                        ssl = nextRange(len(ul[:i:k]))
+                        ul[:i:k] = ssl
+                        pl[:i:k] = ssl
+                        self.assertEqual(pl, ul[:], "set slice [:%d:%d]" % (i, k))
 
                 for k in self.step_range():
-                    ssl = nextRange(len(ul[i::k]))
-                    ul[i::k] = ssl
-                    pl[i::k] = ssl
-                    self.assertEqual(pl, ul[:], "set slice [%d::%d]" % (i, k))
-
-                    ssl = nextRange(len(ul[:i:k]))
-                    ul[:i:k] = ssl
-                    pl[:i:k] = ssl
-                    self.assertEqual(pl, ul[:], "set slice [:%d:%d]" % (i, k))
-
-            for k in self.step_range():
-                ssl = nextRange(len(ul[::k]))
-                ul[::k] = ssl
-                pl[::k] = ssl
-                self.assertEqual(pl, ul[:], "set slice [::%d]" % (k))
+                    ssl = nextRange(len(ul[::k]))
+                    ul[::k] = ssl
+                    pl[::k] = ssl
+                    self.assertEqual(pl, ul[:], "set slice [::%d]" % (k))
 
     def test03_delslice(self):
         "Delete slice"
         for Len in range(self.limit):
-            pl, ul = self.lists_of_len(Len)
-            del pl[:]
-            del ul[:]
-            self.assertEqual(pl[:], ul[:], "del slice [:]")
-            for i in range(-Len - 1, Len + 1):
+            with self.subTest(Len=Len):
                 pl, ul = self.lists_of_len(Len)
-                del pl[i:]
-                del ul[i:]
-                self.assertEqual(pl[:], ul[:], "del slice [%d:]" % (i))
-                pl, ul = self.lists_of_len(Len)
-                del pl[:i]
-                del ul[:i]
-                self.assertEqual(pl[:], ul[:], "del slice [:%d]" % (i))
-                for j in range(-Len - 1, Len + 1):
+                del pl[:]
+                del ul[:]
+                self.assertEqual(pl[:], ul[:], "del slice [:]")
+                for i in range(-Len - 1, Len + 1):
                     pl, ul = self.lists_of_len(Len)
-                    del pl[i:j]
-                    del ul[i:j]
-                    self.assertEqual(pl[:], ul[:], "del slice [%d:%d]" % (i, j))
+                    del pl[i:]
+                    del ul[i:]
+                    self.assertEqual(pl[:], ul[:], "del slice [%d:]" % (i))
+                    pl, ul = self.lists_of_len(Len)
+                    del pl[:i]
+                    del ul[:i]
+                    self.assertEqual(pl[:], ul[:], "del slice [:%d]" % (i))
+                    for j in range(-Len - 1, Len + 1):
+                        pl, ul = self.lists_of_len(Len)
+                        del pl[i:j]
+                        del ul[i:j]
+                        self.assertEqual(pl[:], ul[:], "del slice [%d:%d]" % (i, j))
+                        for k in [*range(-Len - 1, 0), *range(1, Len)]:
+                            pl, ul = self.lists_of_len(Len)
+                            del pl[i:j:k]
+                            del ul[i:j:k]
+                            self.assertEqual(
+                                pl[:], ul[:], "del slice [%d:%d:%d]" % (i, j, k)
+                            )
+
                     for k in [*range(-Len - 1, 0), *range(1, Len)]:
                         pl, ul = self.lists_of_len(Len)
-                        del pl[i:j:k]
-                        del ul[i:j:k]
-                        self.assertEqual(
-                            pl[:], ul[:], "del slice [%d:%d:%d]" % (i, j, k)
-                        )
+                        del pl[:i:k]
+                        del ul[:i:k]
+                        self.assertEqual(pl[:], ul[:], "del slice [:%d:%d]" % (i, k))
+
+                        pl, ul = self.lists_of_len(Len)
+                        del pl[i::k]
+                        del ul[i::k]
+                        self.assertEqual(pl[:], ul[:], "del slice [%d::%d]" % (i, k))
 
                 for k in [*range(-Len - 1, 0), *range(1, Len)]:
                     pl, ul = self.lists_of_len(Len)
-                    del pl[:i:k]
-                    del ul[:i:k]
-                    self.assertEqual(pl[:], ul[:], "del slice [:%d:%d]" % (i, k))
-
-                    pl, ul = self.lists_of_len(Len)
-                    del pl[i::k]
-                    del ul[i::k]
-                    self.assertEqual(pl[:], ul[:], "del slice [%d::%d]" % (i, k))
-
-            for k in [*range(-Len - 1, 0), *range(1, Len)]:
-                pl, ul = self.lists_of_len(Len)
-                del pl[::k]
-                del ul[::k]
-                self.assertEqual(pl[:], ul[:], "del slice [::%d]" % (k))
+                    del pl[::k]
+                    del ul[::k]
+                    self.assertEqual(pl[:], ul[:], "del slice [::%d]" % (k))
 
     def test04_get_set_del_single(self):
         "Get/set/delete single item"
         pl, ul = self.lists_of_len()
         for i in self.limits_plus(0):
-            self.assertEqual(pl[i], ul[i], "get single item [%d]" % i)
+            with self.subTest(i=i):
+                self.assertEqual(pl[i], ul[i], "get single item [%d]" % i)
 
         for i in self.limits_plus(0):
-            pl, ul = self.lists_of_len()
-            pl[i] = 100
-            ul[i] = 100
-            self.assertEqual(pl[:], ul[:], "set single item [%d]" % i)
+            with self.subTest(i=i):
+                pl, ul = self.lists_of_len()
+                pl[i] = 100
+                ul[i] = 100
+                self.assertEqual(pl[:], ul[:], "set single item [%d]" % i)
 
         for i in self.limits_plus(0):
-            pl, ul = self.lists_of_len()
-            del pl[i]
-            del ul[i]
-            self.assertEqual(pl[:], ul[:], "del single item [%d]" % i)
+            with self.subTest(i=i):
+                pl, ul = self.lists_of_len()
+                del pl[i]
+                del ul[i]
+                self.assertEqual(pl[:], ul[:], "del single item [%d]" % i)
 
     def test05_out_of_range_exceptions(self):
         "Out of range exceptions"
@@ -242,12 +251,13 @@ class ListMixinTest(SimpleTestCase):
         pl, ul = self.lists_of_len()
         for i in (-1 - self.limit, self.limit):
             msg = f"invalid index: {i}"
-            with self.assertRaisesMessage(IndexError, msg):  # 'set index %d' % i)
-                setfcn(ul, i)
-            with self.assertRaisesMessage(IndexError, msg):  # 'get index %d' % i)
-                getfcn(ul, i)
-            with self.assertRaisesMessage(IndexError, msg):  # 'del index %d' % i)
-                delfcn(ul, i)
+            with self.subTest(i=i):
+                with self.assertRaisesMessage(IndexError, msg):  # 'set index %d' % i)
+                    setfcn(ul, i)
+                with self.assertRaisesMessage(IndexError, msg):  # 'get index %d' % i)
+                    getfcn(ul, i)
+                with self.assertRaisesMessage(IndexError, msg):  # 'del index %d' % i)
+                    delfcn(ul, i)
 
     def test06_list_methods(self):
         "List methods"
@@ -265,15 +275,17 @@ class ListMixinTest(SimpleTestCase):
         self.assertEqual(pl[:], ul[:], "reverse")
 
         for i in self.limits_plus(1):
-            pl, ul = self.lists_of_len()
-            pl.insert(i, 50)
-            ul.insert(i, 50)
-            self.assertEqual(pl[:], ul[:], "insert at %d" % i)
+            with self.subTest(i=i):
+                pl, ul = self.lists_of_len()
+                pl.insert(i, 50)
+                ul.insert(i, 50)
+                self.assertEqual(pl[:], ul[:], "insert at %d" % i)
 
         for i in self.limits_plus(0):
-            pl, ul = self.lists_of_len()
-            self.assertEqual(pl.pop(i), ul.pop(i), "popped value at %d" % i)
-            self.assertEqual(pl[:], ul[:], "after pop at %d" % i)
+            with self.subTest(i=i):
+                pl, ul = self.lists_of_len()
+                self.assertEqual(pl.pop(i), ul.pop(i), "popped value at %d" % i)
+                self.assertEqual(pl[:], ul[:], "after pop at %d" % i)
 
         pl, ul = self.lists_of_len()
         self.assertEqual(pl.pop(), ul.pop(i), "popped value")
@@ -293,16 +305,19 @@ class ListMixinTest(SimpleTestCase):
 
         pl, ul = self.lists_of_len()
         for val in range(self.limit):
-            self.assertEqual(pl.index(val), ul.index(val), "index of %d" % val)
+            with self.subTest(val=val):
+                self.assertEqual(pl.index(val), ul.index(val), "index of %d" % val)
 
         for val in self.limits_plus(2):
-            self.assertEqual(pl.count(val), ul.count(val), "count %d" % val)
+            with self.subTest(val=val):
+                self.assertEqual(pl.count(val), ul.count(val), "count %d" % val)
 
         for val in range(self.limit):
-            pl, ul = self.lists_of_len()
-            pl.remove(val)
-            ul.remove(val)
-            self.assertEqual(pl[:], ul[:], "after remove val %d" % val)
+            with self.subTest(val=val):
+                pl, ul = self.lists_of_len()
+                pl.remove(val)
+                ul.remove(val)
+                self.assertEqual(pl[:], ul[:], "after remove val %d" % val)
 
         def indexfcn(x, v):
             return x.index(v)
@@ -345,15 +360,17 @@ class ListMixinTest(SimpleTestCase):
 
         msg = "Must have at least 3 items"
         for i in range(len(ul) - ul._minlength + 1, len(ul)):
-            with self.assertRaisesMessage(ValueError, msg):
-                delfcn(ul, i)
-            with self.assertRaisesMessage(ValueError, msg):
-                setfcn(ul, i)
+            with self.subTest(i=i):
+                with self.assertRaisesMessage(ValueError, msg):
+                    delfcn(ul, i)
+                with self.assertRaisesMessage(ValueError, msg):
+                    setfcn(ul, i)
         del ul[: len(ul) - ul._minlength]
 
         ul._maxlength = 4
         for i in range(0, ul._maxlength - len(ul)):
-            ul.append(i)
+            with self.subTest(i=i):
+                ul.append(i)
         msg = "Cannot have more than 4 items"
         with self.assertRaisesMessage(ValueError, msg):
             ul.append(10)
@@ -373,17 +390,19 @@ class ListMixinTest(SimpleTestCase):
         "Index check"
         pl, ul = self.lists_of_len()
         for i in self.limits_plus(0):
-            if i < 0:
-                self.assertEqual(
-                    ul._checkindex(i), i + self.limit, "_checkindex(neg index)"
-                )
-            else:
-                self.assertEqual(ul._checkindex(i), i, "_checkindex(pos index)")
+            with self.subTest(i=i):
+                if i < 0:
+                    self.assertEqual(
+                        ul._checkindex(i), i + self.limit, "_checkindex(neg index)"
+                    )
+                else:
+                    self.assertEqual(ul._checkindex(i), i, "_checkindex(pos index)")
 
         for i in (-self.limit - 1, self.limit):
             msg = f"invalid index: {i}"
-            with self.assertRaisesMessage(IndexError, msg):
-                ul._checkindex(i)
+            with self.subTest(i=i):
+                with self.assertRaisesMessage(IndexError, msg):
+                    ul._checkindex(i)
 
     def test_11_sorting(self):
         "Sorting"
