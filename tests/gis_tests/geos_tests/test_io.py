@@ -37,7 +37,11 @@ class GEOSIOTest(SimpleTestCase):
     def test02_wktwriter(self):
         # Creating a WKTWriter instance, testing its ptr property.
         wkt_w = WKTWriter()
-        with self.assertRaises(TypeError):
+        msg = (
+            "Incompatible pointer type: "
+            "<class 'django.contrib.gis.geos.prototypes.io.LP_WKTReader_st'>."
+        )
+        with self.assertRaisesMessage(TypeError, msg):
             wkt_w.ptr = WKTReader.ptr_type()
 
         ref = GEOSGeometry("POINT (5 23)")
@@ -71,8 +75,9 @@ class GEOSIOTest(SimpleTestCase):
             self.assertEqual(ref, geom)
 
         bad_input = (1, 5.23, None, False)
+        msg = "'wkb' must be bytes, str or memoryview."
         for bad_wkb in bad_input:
-            with self.assertRaises(TypeError):
+            with self.assertRaisesMessage(TypeError, msg):
                 wkb_r.read(bad_wkb)
 
     def test04_wkbwriter(self):
@@ -92,7 +97,8 @@ class GEOSIOTest(SimpleTestCase):
         # Ensuring bad byteorders are not accepted.
         for bad_byteorder in (-1, 2, 523, "foo", None):
             # Equivalent of `wkb_w.byteorder = bad_byteorder`
-            with self.assertRaises(ValueError):
+            msg = "Byte order parameter must be 0 (Big Endian) or 1 (Little Endian)."
+            with self.assertRaisesMessage(ValueError, msg):
                 wkb_w._set_byteorder(bad_byteorder)
 
         # Setting the byteorder to 0 (for Big Endian)

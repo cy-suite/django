@@ -4,9 +4,8 @@
 # Modified from original contribution by Aryeh Leib Taurog, which was
 # released under the New BSD license.
 
-import unittest
-
 from django.contrib.gis.geos.mutable_list import ListMixin
+from django.test import SimpleTestCase
 
 
 class UserListA(ListMixin):
@@ -54,7 +53,7 @@ def nextRange(length):
 nextRange.start = 0
 
 
-class ListMixinTest(unittest.TestCase):
+class ListMixinTest(SimpleTestCase):
     """
     Tests base class ListMixin by comparing a list clone which is
     a ListMixin subclass with a real Python list.
@@ -133,10 +132,18 @@ class ListMixinTest(unittest.TestCase):
                         self.assertEqual(pl, ul[:], "set slice [%d:%d:%d]" % (i, j, k))
 
                         sliceLen = len(ul[i:j:k])
-                        with self.assertRaises(ValueError):
+                        msg = (
+                            f"attempt to assign sequence of size {sliceLen + 1} "
+                            f"to extended slice of size {sliceLen}"
+                        )
+                        with self.assertRaisesMessage(ValueError, msg):
                             setfcn(ul, i, j, k, sliceLen + 1)
                         if sliceLen > 2:
-                            with self.assertRaises(ValueError):
+                            msg = (
+                                f"attempt to assign sequence of size {sliceLen - 1} "
+                                f"to extended slice of size {sliceLen}"
+                            )
+                            with self.assertRaisesMessage(ValueError, msg):
                                 setfcn(ul, i, j, k, sliceLen - 1)
 
                 for k in self.step_range():
@@ -234,11 +241,12 @@ class ListMixinTest(unittest.TestCase):
 
         pl, ul = self.lists_of_len()
         for i in (-1 - self.limit, self.limit):
-            with self.assertRaises(IndexError):  # 'set index %d' % i)
+            msg = f"invalid index: {i}"
+            with self.assertRaisesMessage(IndexError, msg):  # 'set index %d' % i)
                 setfcn(ul, i)
-            with self.assertRaises(IndexError):  # 'get index %d' % i)
+            with self.assertRaisesMessage(IndexError, msg):  # 'get index %d' % i)
                 getfcn(ul, i)
-            with self.assertRaises(IndexError):  # 'del index %d' % i)
+            with self.assertRaisesMessage(IndexError, msg):  # 'del index %d' % i)
                 delfcn(ul, i)
 
     def test06_list_methods(self):
@@ -276,9 +284,11 @@ class ListMixinTest(unittest.TestCase):
         def popfcn(x, i):
             x.pop(i)
 
-        with self.assertRaises(IndexError):
+        msg = "invalid index: 3"
+        with self.assertRaisesMessage(IndexError, msg):
             popfcn(ul, self.limit)
-        with self.assertRaises(IndexError):
+        msg = "invalid index: -4"
+        with self.assertRaisesMessage(IndexError, msg):
             popfcn(ul, -1 - self.limit)
 
         pl, ul = self.lists_of_len()
@@ -300,9 +310,10 @@ class ListMixinTest(unittest.TestCase):
         def removefcn(x, v):
             return x.remove(v)
 
-        with self.assertRaises(ValueError):
+        msg = "40 not found in object"
+        with self.assertRaisesMessage(ValueError, msg):
             indexfcn(ul, 40)
-        with self.assertRaises(ValueError):
+        with self.assertRaisesMessage(ValueError, msg):
             removefcn(ul, 40)
 
     def test07_allowed_types(self):
@@ -315,9 +326,10 @@ class ListMixinTest(unittest.TestCase):
         def setfcn(x, i, v):
             x[i] = v
 
-        with self.assertRaises(TypeError):
+        msg = "Invalid type encountered in the arguments."
+        with self.assertRaisesMessage(TypeError, msg):
             setfcn(ul, 2, "hello")
-        with self.assertRaises(TypeError):
+        with self.assertRaisesMessage(TypeError, msg):
             setfcn(ul, slice(0, 3, 2), ("hello", "goodbye"))
 
     def test08_min_length(self):
@@ -331,17 +343,19 @@ class ListMixinTest(unittest.TestCase):
         def setfcn(x, i):
             x[:i] = []
 
+        msg = "Must have at least 3 items"
         for i in range(len(ul) - ul._minlength + 1, len(ul)):
-            with self.assertRaises(ValueError):
+            with self.assertRaisesMessage(ValueError, msg):
                 delfcn(ul, i)
-            with self.assertRaises(ValueError):
+            with self.assertRaisesMessage(ValueError, msg):
                 setfcn(ul, i)
         del ul[: len(ul) - ul._minlength]
 
         ul._maxlength = 4
         for i in range(0, ul._maxlength - len(ul)):
             ul.append(i)
-        with self.assertRaises(ValueError):
+        msg = "Cannot have more than 4 items"
+        with self.assertRaisesMessage(ValueError, msg):
             ul.append(10)
 
     def test09_iterable_check(self):
@@ -351,7 +365,8 @@ class ListMixinTest(unittest.TestCase):
         def setfcn(x, i, v):
             x[i] = v
 
-        with self.assertRaises(TypeError):
+        msg = "can only assign an iterable to a slice"
+        with self.assertRaisesMessage(TypeError, msg):
             setfcn(ul, slice(0, 3, 2), 2)
 
     def test10_checkindex(self):
@@ -366,7 +381,8 @@ class ListMixinTest(unittest.TestCase):
                 self.assertEqual(ul._checkindex(i), i, "_checkindex(pos index)")
 
         for i in (-self.limit - 1, self.limit):
-            with self.assertRaises(IndexError):
+            msg = f"invalid index: {i}"
+            with self.assertRaisesMessage(IndexError, msg):
                 ul._checkindex(i)
 
     def test_11_sorting(self):

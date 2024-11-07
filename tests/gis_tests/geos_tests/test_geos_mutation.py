@@ -2,8 +2,6 @@
 # Modified from original contribution by Aryeh Leib Taurog, which was
 # released under the New BSD license.
 
-import unittest
-
 from django.contrib.gis.geos import (
     LinearRing,
     LineString,
@@ -12,6 +10,7 @@ from django.contrib.gis.geos import (
     Polygon,
     fromstr,
 )
+from django.test import SimpleTestCase
 
 
 def api_get_distance(x):
@@ -77,7 +76,7 @@ geos_function_tests = [
 ]
 
 
-class GEOSMutationTest(unittest.TestCase):
+class GEOSMutationTest(SimpleTestCase):
     """
     Tests Pythonic Mutability of Python GEOS geometry wrappers
     get/set/delitem on a slice, normal list methods
@@ -88,9 +87,11 @@ class GEOSMutationTest(unittest.TestCase):
         p = Point(1, 2)
         for i in range(-2, 2):
             p._checkindex(i)
-        with self.assertRaises(IndexError):
+        msg = "invalid index: 2"
+        with self.assertRaisesMessage(IndexError, msg):
             p._checkindex(2)
-        with self.assertRaises(IndexError):
+        msg = "invalid index: -3"
+        with self.assertRaisesMessage(IndexError, msg):
             p._checkindex(-3)
 
     def test01_PointMutations(self):
@@ -110,9 +111,10 @@ class GEOSMutationTest(unittest.TestCase):
 
     def test02_PointExceptions(self):
         "Testing Point exceptions"
-        with self.assertRaises(TypeError):
+        msg = "Invalid parameters given for Point initialization."
+        with self.assertRaisesMessage(TypeError, msg):
             Point(range(1))
-        with self.assertRaises(TypeError):
+        with self.assertRaisesMessage(TypeError, msg):
             Point(range(4))
 
     def test03_PointApi(self):
