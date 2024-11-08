@@ -651,7 +651,7 @@ class GEOSTest(SimpleTestCase, TestDataMixin):
                 # Testing polygon construction.
                 msg = (
                     "Parameter must be a sequence of LinearRings or "
-                    "objects that can initialize to LinearRings"
+                    "objects that can initialize to LinearRings."
                 )
                 with self.assertRaisesMessage(TypeError, msg):
                     Polygon(0, [1, 2, 3])
@@ -776,7 +776,7 @@ class GEOSTest(SimpleTestCase, TestDataMixin):
     def test_relate_pattern(self):
         "Testing relate() and relate_pattern()."
         g = fromstr("POINT (0 0)")
-        msg = "invalid intersection matrix pattern"
+        msg = "Invalid intersection matrix pattern."
         with self.assertRaisesMessage(GEOSException, msg):
             g.relate_pattern(0, "invalid pattern, yo")
         for rg in self.geometries.relate_geoms:
@@ -1078,7 +1078,7 @@ class GEOSTest(SimpleTestCase, TestDataMixin):
                 # Should only be able to use __setitem__ with LinearRing geometries.
                 msg = (
                     "Parameter must be a sequence of LinearRings or "
-                    "objects that can initialize to LinearRings"
+                    "objects that can initialize to LinearRings."
                 )
 
                 with self.assertRaisesMessage(TypeError, msg):
@@ -1309,7 +1309,7 @@ class GEOSTest(SimpleTestCase, TestDataMixin):
                 if isinstance(g, Point):
                     # IndexError is not raised in GEOS 3.8.0.
                     if geos_version_tuple() != (3, 8, 0):
-                        msg = "invalid GEOS Geometry index:"
+                        msg = "Invalid GEOS Geometry index:"
                         with self.assertRaisesMessage(IndexError, msg):
                             g.x
                 elif isinstance(g, Polygon):
@@ -1443,7 +1443,7 @@ class GEOSTest(SimpleTestCase, TestDataMixin):
         """Testing `transform` method (no SRID or negative SRID)"""
 
         g = GEOSGeometry("POINT (-104.609 38.255)", srid=None)
-        msg = "Calling transform() with no SRID set is not supported"
+        msg = "Calling transform() with no SRID set is not supported."
         with self.assertRaisesMessage(GEOSException, msg):
             g.transform(2774)
 
