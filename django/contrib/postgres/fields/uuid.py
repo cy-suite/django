@@ -9,6 +9,11 @@ class UUID4Field(UUIDField):
         kwargs["default"] = NOT_PROVIDED
         super().__init__(*args, **kwargs)
 
+    def deconstruct(self):
+        name, path, args, kwargs = super().deconstruct()
+        del kwargs["db_default"]
+        return name, path, args, kwargs
+
     def get_internal_type(self):
         return "UUID4Field"
 
