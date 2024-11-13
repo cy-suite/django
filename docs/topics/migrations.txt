@@ -754,6 +754,10 @@ You can then transition the squashed migration to a normal migration by:
     future, you should remove references to it from Django’s migrations table
     with the :option:`migrate --prune` option.
 
+.. versionchanged:: 5.2
+
+    Added support for squashing squashed migrations.
+
 .. _migration-serializing:
 
 Serializing values
