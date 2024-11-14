@@ -250,39 +250,6 @@ class MigrationLoader:
         for key, migration in self.disk_migrations.items():
             self.add_external_dependencies(key, migration)
         # Carry out replacements where possible and if enabled.
-
-        # application_memo[target] = [is_calculating, result]
-        application_memo = {}
-
-        def has_been_applied(target):
-            if target in application_memo:
-                is_calculating, result = application_memo[target]
-                if is_calculating:
-                    raise CommandError(
-                        f"Migration replacement loop found starting at {target}"
-                    )
-                return result
-
-            application_memo[target] = [True, None]
-            # we have two ways that a target can be applied
-            # 1. we have it in self.applied_migrations (registered in the DB)
-            # 2. it is a squashed migration, and its replaces have been applied
-            if target in self.applied_migrations:
-                # set the value for memoization
-                application_memo[target] = [False, True]
-                return True
-            if target in self.replacements:
-                # this has a replaces key, let's look up whether those have been applied
-                migration = self.replacements[target]
-                calculated_result = all(
-                    has_been_applied(target) for target in migration.replaces
-                )
-                application_memo[target] = [False, calculated_result]
-                return calculated_result
-
-            application_memo[target] = [False, False]
-            return False
-
         if self.replace_migrations:
             # migration_work[key] = [migration, visited, finished_replacement]
             # this is mainly used to track cyclical dependencies and which
@@ -316,7 +283,7 @@ class MigrationLoader:
                 # Get applied status of each of this migration's replacement
                 # targets.
                 applied_statuses = [
-                    has_been_applied(target) for target in migration.replaces
+                    (target in self.applied_migrations) for target in migration.replaces
                 ]
                 # The replacing migration is only marked as applied if all of
                 # its replacement targets are.
