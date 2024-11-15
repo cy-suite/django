@@ -280,11 +280,24 @@ class MigrationLoader:
                     if key2 in migration_work:
                         do_replacement(key2)
 
-                # Get applied status of each of this migration's replacement
-                # targets.
+                # Get replacement targets recursively.
+                previous_replaced_keys = migration.replaces
+                while True:
+                    replaced_keys = []
+                    for replaced_key in previous_replaced_keys:
+                        replaced_migration = self.disk_migrations.get(replaced_key)
+                        if replaced_migration and replaced_migration.replaces:
+                            replaced_keys.extend(replaced_migration.replaces)
+                        else:
+                            replaced_keys.append(replaced_key)
+                    if set(replaced_keys) == set(previous_replaced_keys):
+                        break
+                    previous_replaced_keys = replaced_keys
+                # Get applied status of each found replacement target.
                 applied_statuses = [
-                    (target in self.applied_migrations) for target in migration.replaces
+                    (target in self.applied_migrations) for target in replaced_keys
                 ]
+
                 # The replacing migration is only marked as applied if all of
                 # its replacement targets are.
                 if all(applied_statuses):
