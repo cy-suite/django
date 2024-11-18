@@ -10,6 +10,8 @@ Mailing lists and Forum
     not public. For further details, please see :doc:`our security
     policies </internals/security>`.
 
+.. _django-forum:
+
 Django Forum
 ============
 

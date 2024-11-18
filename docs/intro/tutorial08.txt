@@ -68,7 +68,7 @@ resolve the issue yourself, there are options available to you.
    outlines troubleshooting options.
 #. Search for similar issues on the package's issue tracker. Django Debug
    Toolbar’s is `on GitHub <https://github.com/jazzband/django-debug-toolbar/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc>`_.
-#. Consult the `Django Forum <https://forum.djangoproject.com/>`_.
+#. Consult the |django-forum|.
 #. Join the `Django Discord server <https://discord.gg/xcRH6mN4fa>`_.
 #. Join the #Django IRC channel on `Libera.chat <https://libera.chat/>`_.
 
