@@ -307,7 +307,7 @@ To refresh the values, call the :meth:`django.tasks.TaskResult.refresh` method::
 
     result.refresh()  # or await result.arefresh()
 
-    result.status  # COMPLETE
+    result.status  # SUCCEEDED
 
 Return values
 -------------
@@ -322,7 +322,7 @@ If the task has not finished executing, or has failed, :exc:`ValueError` is rais
 Exceptions
 ----------
 
-If the task doesn't complete successfully, and instead raises an exception, either
+If the task doesn't succeed, and instead raises an exception, either
 as part of the task or as part of running it, the exception instance is saved
 to the :attr:`django.tasks.TaskResult.exception` attribute::
 

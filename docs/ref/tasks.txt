@@ -136,7 +136,7 @@ Task results
     The :class:`Task` raised an exception during execution, or was unable
     to start.
 
-.. attribute:: ResultStatus.COMPLETE
+.. attribute:: ResultStatus.SUCCEEDED
 
     The :class:`Task` has finished executing successfully.
 
@@ -175,7 +175,7 @@ Attributes of ``TaskResult`` cannot be modified.
 
 .. attribute:: TaskResult.finished_at
 
-    The time when the task finished execution, whether it failed or completed.
+    The time when the task finished execution, whether it failed or succeeded.
 
 .. attribute:: TaskResult.backend
 

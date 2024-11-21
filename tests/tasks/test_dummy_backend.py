@@ -78,11 +78,11 @@ class DummyBackendTestCase(SimpleTestCase):
         )
 
         enqueued_result = default_task_backend.results[0]
-        object.__setattr__(enqueued_result, "status", ResultStatus.COMPLETE)
+        object.__setattr__(enqueued_result, "status", ResultStatus.SUCCEEDED)
 
         self.assertEqual(result.status, ResultStatus.NEW)
         result.refresh()
-        self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
 
     async def test_refresh_result_async(self):
         result = await default_task_backend.aenqueue(
@@ -90,11 +90,11 @@ class DummyBackendTestCase(SimpleTestCase):
         )
 
         enqueued_result = default_task_backend.results[0]
-        object.__setattr__(enqueued_result, "status", ResultStatus.COMPLETE)
+        object.__setattr__(enqueued_result, "status", ResultStatus.SUCCEEDED)
 
         self.assertEqual(result.status, ResultStatus.NEW)
         await result.arefresh()
-        self.assertEqual(result.status, ResultStatus.COMPLETE)
+        self.assertEqual(result.status, ResultStatus.SUCCEEDED)
 
     async def test_get_missing_result(self):
         with self.assertRaises(ResultDoesNotExist):
