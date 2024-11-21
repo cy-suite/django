@@ -1,9 +1,11 @@
 import inspect
 import json
+import random
 import time
 from functools import wraps
 from traceback import format_exception
 
+from django.utils.crypto import RANDOM_STRING_CHARS
 from django.utils.module_loading import import_string
 
 
@@ -69,3 +71,15 @@ def exception_from_dict(exc_data):
         raise TypeError(f"{type(exc_class)} is not an exception")
 
     return exc_class(*exc_data["exc_args"])
+
+
+def get_random_id():
+    """
+    Return a random string for use as a task id.
+
+    Whilst 64 characters is the max, just use 32 as a sensible middle-ground.
+
+    This should be much faster than `get_random_string`, since
+    it's not cryptographically secure.
+    """
+    return "".join(random.choices(RANDOM_STRING_CHARS, k=32))

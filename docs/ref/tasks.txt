@@ -156,7 +156,9 @@ Attributes of ``TaskResult`` cannot be modified.
     A unique identifier for the result, which can be passed to
     :meth:`Task.get_result`.
 
-    The id must be a UUID4, represented as a dashed string.
+    The format of a task result id will depend on the backend being used.
+    Some may use numbers, others UUIDs.
+    Task ids are always strings less than 64 characters.
 
 .. attribute:: TaskResult.status
 
