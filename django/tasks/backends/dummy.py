@@ -16,17 +16,17 @@ class DummyBackend(BaseTaskBackend):
     supports_defer = True
     supports_async_task = True
 
-    def __init__(self, alias, params) -> None:
+    def __init__(self, alias, params):
         super().__init__(alias, params)
 
         self.results = []
 
-    def _store_result(self, result) -> None:
+    def _store_result(self, result):
         object.__setattr__(result, "enqueued_at", timezone.now())
         self.results.append(result)
         task_enqueued.send(type(self), task_result=result)
 
-    def enqueue(self, task, args, kwargs) -> TaskResult:
+    def enqueue(self, task, args, kwargs):
         self.validate_task(task)
 
         result = TaskResult(
