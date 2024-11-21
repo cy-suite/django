@@ -248,3 +248,8 @@ class TaskTestCase(SimpleTestCase):
             import_string(test_tasks.noop_task_async.module_path),
             test_tasks.noop_task_async,
         )
+
+    @override_settings(TASKS={})
+    def test_no_backends(self):
+        with self.assertRaises(InvalidTaskBackendError):
+            test_tasks.noop_task.enqueue()
