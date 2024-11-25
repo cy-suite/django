@@ -142,7 +142,7 @@ overridden by what's passed by
     * ``'multiline'`` controls whether multiline support is enabled in
       templates. For new projects this is set to ``True``, and this is the
       recommended setting. Multiline support in templates means that newline
-      between `{%` and `%}` in templates is allowed.
+      between ``{%`` and ``%}`` in templates is allowed.
 
       It defaults to ``True``.
 
