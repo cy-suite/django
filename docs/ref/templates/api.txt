@@ -140,7 +140,7 @@ overridden by what's passed by
       the :ttag:`{% load %}<load>` tag.
 
     * ``'multiline'`` controls whether multiline support is enabled in
-      templates. For new projects this is set to `True`, and this is the
+      templates. For new projects this is set to ``True``, and this is the
       recommended setting. Multiline support in templates means that newline
       between `{%` and `%}` in templates is allowed.
 
