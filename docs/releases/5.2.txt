@@ -31,6 +31,12 @@ and only officially support the latest release of each series.
 What's new in Django 5.2
 ========================
 
+Moving model between apps
+-------------------------
+
+The migration framework now detects and supports moving models moving between
+apps. See :ref:`moving-model-between-apps` for details.
+
 Minor features
 --------------
 
