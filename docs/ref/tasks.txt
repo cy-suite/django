@@ -85,10 +85,6 @@ Attributes of ``Task`` cannot be modified.
     * :attr:`queue_name <Task.queue_name>`
     * :attr:`run_after <Task.run_after>`
 
-    ``run_after`` may also be provided as a :class:`timedelta <datetime.timedelta>`,
-    which is used relative to the current time (when ``using`` is called), or a
-    timezone-aware :class:`datetime <datetime.datetime>`.
-
 .. method:: Task.enqueue(*args, **kwargs)
 
     Enqueue the task for later execution.

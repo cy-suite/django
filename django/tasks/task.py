@@ -1,12 +1,11 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timedelta
+from datetime import datetime
 from inspect import iscoroutinefunction
 from typing import Any, Callable, Dict, Optional, Type
 
 from asgiref.sync import async_to_sync, sync_to_async
 
 from django.db.models.enums import TextChoices
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from .exceptions import ResultDoesNotExist
@@ -88,10 +87,7 @@ class Task:
         if queue_name is not None:
             changes["queue_name"] = queue_name
         if run_after is not None:
-            if isinstance(run_after, timedelta):
-                changes["run_after"] = timezone.now() + run_after
-            else:
-                changes["run_after"] = run_after
+            changes["run_after"] = run_after
         if backend is not None:
             changes["backend"] = backend
 
