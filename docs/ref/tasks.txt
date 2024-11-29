@@ -183,14 +183,19 @@ Attributes of ``TaskResult`` cannot be modified.
 
     The backend the result is from.
 
-.. attribute:: TaskResult.exception
+.. attribute:: TaskResult.exception_class
 
-    The exception raised when executing the task, or ``None`` if no exception
-    was raised.
+    The exception class raised when executing the task.
+
+    If the task has not finished, ``ValueError`` is raised. If the task finished
+    successfully, the exception class is ``None``.
 
 .. attribute:: TaskResult.traceback
 
     The exception traceback from the raised exception when the task failed.
+
+    If the task has not finished, ``ValueError`` is raised. If the task finished
+    successfully, the traceback is ``None``.
 
 .. attribute:: TaskResult.return_value
 
@@ -205,6 +210,10 @@ Attributes of ``TaskResult`` cannot be modified.
 .. method:: TaskResult.arefresh
 
     The ``async`` variant of :meth:`TaskResult.refresh`.
+
+.. attribute:: TaskResult.is_finished
+
+    Whether the task has finished (successfully or not).
 
 Backends
 ========

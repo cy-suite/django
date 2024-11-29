@@ -7,7 +7,7 @@ from asgiref.sync import async_to_sync
 from django.db import transaction
 from django.tasks.signals import task_enqueued, task_finished
 from django.tasks.task import ResultStatus, TaskResult
-from django.tasks.utils import exception_to_dict, get_random_id, json_normalize
+from django.tasks.utils import get_exception_traceback, get_random_id, json_normalize
 from django.utils import timezone
 
 from .base import BaseTaskBackend
@@ -46,10 +46,9 @@ class ImmediateBackend(BaseTaskBackend):
                 raise
 
             object.__setattr__(task_result, "finished_at", timezone.now())
-            try:
-                object.__setattr__(task_result, "_exception_data", exception_to_dict(e))
-            except Exception:
-                logger.exception("Task id=%s unable to save exception", task_result.id)
+
+            object.__setattr__(task_result, "_traceback", get_exception_traceback(e))
+            object.__setattr__(task_result, "_exception_class", type(e))
 
             object.__setattr__(task_result, "status", ResultStatus.FAILED)
 

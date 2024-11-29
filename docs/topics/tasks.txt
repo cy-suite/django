@@ -323,15 +323,13 @@ Exceptions
 ----------
 
 If the task doesn't succeed, and instead raises an exception, either
-as part of the task or as part of running it, the exception instance is saved
-to the :attr:`django.tasks.TaskResult.exception` attribute::
+as part of the task or as part of running it, the exception class is saved
+to the :attr:`django.tasks.TaskResult.exception_class` attribute::
 
-    assert isinstance(result.exception, ValueError)
+    assert result.exception_class == ValueError
 
-As part of the serialization process for exceptions, some information is lost.
+Note that this is just the type of exception, and contains no other values.
 The traceback information is reduced to a string which you can use to help
 debugging::
 
     print(result.traceback)
-
-If the exception could not be serialized, ``exception`` is ``None``.

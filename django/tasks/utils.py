@@ -6,7 +6,6 @@ from functools import wraps
 from traceback import format_exception
 
 from django.utils.crypto import RANDOM_STRING_CHARS
-from django.utils.module_loading import import_string
 
 
 def is_module_level_function(func):
@@ -52,25 +51,12 @@ def retry(*, retries=3, backoff_delay=0.1):
     return wrapper
 
 
+def get_exception_traceback(exc):
+    return "".join(format_exception(type(exc), exc, exc.__traceback__))
+
+
 def get_module_path(val):
     return f"{val.__module__}.{val.__qualname__}"
-
-
-def exception_to_dict(exc):
-    return {
-        "exc_type": get_module_path(type(exc)),
-        "exc_args": json_normalize(exc.args),
-        "exc_traceback": "".join(format_exception(type(exc), exc, exc.__traceback__)),
-    }
-
-
-def exception_from_dict(exc_data):
-    exc_class = import_string(exc_data["exc_type"])
-
-    if not inspect.isclass(exc_class) or not issubclass(exc_class, BaseException):
-        raise TypeError(f"{type(exc_class)} is not an exception")
-
-    return exc_class(*exc_data["exc_args"])
 
 
 def get_random_id():

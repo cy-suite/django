@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from inspect import iscoroutinefunction
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Type
 
 from asgiref.sync import async_to_sync, sync_to_async
 
@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from .exceptions import ResultDoesNotExist
-from .utils import exception_from_dict, get_module_path, json_normalize
+from .utils import get_module_path, json_normalize
 
 DEFAULT_TASK_BACKEND_ALIAS = "default"
 DEFAULT_QUEUE_NAME = "default"
@@ -19,7 +19,8 @@ MAX_PRIORITY = 100
 DEFAULT_PRIORITY = 0
 
 TASK_REFRESH_ATTRS = {
-    "_exception_data",
+    "_exception_class",
+    "_traceback",
     "_return_value",
     "finished_at",
     "started_at",
@@ -214,27 +215,10 @@ class TaskResult:
     backend: str
     """The name of the backend the task will run on"""
 
+    _exception_class: Optional[Type[BaseException]] = field(init=False, default=None)
+    _traceback: Optional[str] = field(init=False, default=None)
+
     _return_value: Optional[Any] = field(init=False, default=None)
-    _exception_data: Optional[Dict[str, Any]] = field(init=False, default=None)
-
-    @property
-    def exception(self):
-        return (
-            exception_from_dict(self._exception_data)
-            if self.status == ResultStatus.FAILED and self._exception_data is not None
-            else None
-        )
-
-    @property
-    def traceback(self):
-        """
-        Return the string representation of the traceback of the task if it failed
-        """
-        return (
-            self._exception_data["exc_traceback"]
-            if self.status == ResultStatus.FAILED and self._exception_data is not None
-            else None
-        )
 
     @property
     def return_value(self):
@@ -244,13 +228,31 @@ class TaskResult:
         If the task didn't succeed, an exception is raised.
         This is to distinguish against the task returning None.
         """
-        if self.status == ResultStatus.FAILED:
-            raise ValueError("Task failed")
-
-        elif self.status != ResultStatus.SUCCEEDED:
+        if not self.is_finished:
             raise ValueError("Task has not finished yet")
 
         return self._return_value
+
+    @property
+    def exception_class(self):
+        """The exception raised by the task function"""
+        if not self.is_finished:
+            raise ValueError("Task has not finished yet")
+
+        return self._exception_class
+
+    @property
+    def traceback(self):
+        """The traceback of the exception if the task failed"""
+        if not self.is_finished:
+            raise ValueError("Task has not finished yet")
+
+        return self._traceback
+
+    @property
+    def is_finished(self):
+        """Has the task finished?"""
+        return self.status in {ResultStatus.FAILED, ResultStatus.SUCCEEDED}
 
     def refresh(self):
         """
