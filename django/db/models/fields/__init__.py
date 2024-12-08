@@ -393,7 +393,10 @@ class Field(RegisterLookupMixin):
 
         if (
             self.db_default is NOT_PROVIDED
-            or isinstance(self.db_default, Value)
+            or (
+                isinstance(self.db_default, Value)
+                or not hasattr(self.db_default, "resolve_expression")
+            )
             or databases is None
         ):
             return []
@@ -654,6 +657,8 @@ class Field(RegisterLookupMixin):
             path = path.replace("django.db.models.fields.json", "django.db.models")
         elif path.startswith("django.db.models.fields.proxy"):
             path = path.replace("django.db.models.fields.proxy", "django.db.models")
+        elif path.startswith("django.db.models.fields.composite"):
+            path = path.replace("django.db.models.fields.composite", "django.db.models")
         elif path.startswith("django.db.models.fields"):
             path = path.replace("django.db.models.fields", "django.db.models")
         # Return basic info - other fields should override this.

@@ -172,11 +172,14 @@ class RawModelIterable(BaseIterable):
                     "Raw query must include the primary key"
                 )
             fields = [self.queryset.model_fields.get(c) for c in self.queryset.columns]
-            converters = compiler.get_converters(
-                [f.get_col(f.model._meta.db_table) if f else None for f in fields]
-            )
+            cols = [f.get_col(f.model._meta.db_table) if f else None for f in fields]
+            converters = compiler.get_converters(cols)
             if converters:
                 query_iterator = compiler.apply_converters(query_iterator, converters)
+            if compiler.has_composite_fields(cols):
+                query_iterator = compiler.composite_fields_to_tuples(
+                    query_iterator, cols
+                )
             for values in query_iterator:
                 # Associate fields to values
                 model_init_values = [values[pos] for pos in model_init_pos]
@@ -661,15 +664,19 @@ class QuerySet(AltersData):
         obj.save(force_insert=True, using=self.db)
         return obj
 
+    create.alters_data = True
+
     async def acreate(self, **kwargs):
         return await sync_to_async(self.create)(**kwargs)
+
+    acreate.alters_data = True
 
     def _prepare_for_bulk_create(self, objs):
         from django.db.models.expressions import DatabaseDefault
 
         connection = connections[self.db]
         for obj in objs:
-            if obj.pk is None:
+            if not obj._is_pk_set():
                 # Populate new PK values.
                 obj.pk = obj._meta.pk.get_pk_value_on_save(obj)
             if not connection.features.supports_default_keyword_in_bulk_insert:
@@ -795,7 +802,7 @@ class QuerySet(AltersData):
         objs = list(objs)
         self._prepare_for_bulk_create(objs)
         with transaction.atomic(using=self.db, savepoint=False):
-            objs_with_pk, objs_without_pk = partition(lambda o: o.pk is None, objs)
+            objs_without_pk, objs_with_pk = partition(lambda o: o._is_pk_set(), objs)
             if objs_with_pk:
                 returned_columns = self._batched_insert(
                     objs_with_pk,
@@ -836,6 +843,8 @@ class QuerySet(AltersData):
 
         return objs
 
+    bulk_create.alters_data = True
+
     async def abulk_create(
         self,
         objs,
@@ -854,6 +863,8 @@ class QuerySet(AltersData):
             unique_fields=unique_fields,
         )
 
+    abulk_create.alters_data = True
+
     def bulk_update(self, objs, fields, batch_size=None):
         """
         Update the given fields in each of the given objects in the database.
@@ -863,7 +874,7 @@ class QuerySet(AltersData):
         if not fields:
             raise ValueError("Field names must be given to bulk_update().")
         objs = tuple(objs)
-        if any(obj.pk is None for obj in objs):
+        if not all(obj._is_pk_set() for obj in objs):
             raise ValueError("All bulk_update() objects must have a primary key set.")
         fields = [self.model._meta.get_field(name) for name in fields]
         if any(not f.concrete or f.many_to_many for f in fields):
@@ -942,11 +953,15 @@ class QuerySet(AltersData):
                     pass
                 raise
 
+    get_or_create.alters_data = True
+
     async def aget_or_create(self, defaults=None, **kwargs):
         return await sync_to_async(self.get_or_create)(
             defaults=defaults,
             **kwargs,
         )
+
+    aget_or_create.alters_data = True
 
     def update_or_create(self, defaults=None, create_defaults=None, **kwargs):
         """
@@ -993,12 +1008,16 @@ class QuerySet(AltersData):
                 obj.save(using=self.db)
         return obj, False
 
+    update_or_create.alters_data = True
+
     async def aupdate_or_create(self, defaults=None, create_defaults=None, **kwargs):
         return await sync_to_async(self.update_or_create)(
             defaults=defaults,
             create_defaults=create_defaults,
             **kwargs,
         )
+
+    aupdate_or_create.alters_data = True
 
     def _extract_model_params(self, defaults, **kwargs):
         """
@@ -1290,7 +1309,7 @@ class QuerySet(AltersData):
                 return False
         except AttributeError:
             raise TypeError("'obj' must be a model instance.")
-        if obj.pk is None:
+        if not obj._is_pk_set():
             raise ValueError("QuerySet.contains() cannot be used on unsaved objects.")
         if self._result_cache is not None:
             return obj in self._result_cache

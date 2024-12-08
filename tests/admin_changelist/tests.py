@@ -860,6 +860,47 @@ class ChangeListTests(TestCase):
         cl = m.get_changelist_instance(request)
         self.assertCountEqual(cl.queryset, [abcd])
 
+    def test_search_with_exact_lookup_for_non_string_field(self):
+        child = Child.objects.create(name="Asher", age=11)
+        model_admin = ChildAdmin(Child, custom_site)
+
+        for search_term, expected_result in [
+            ("11", [child]),
+            ("Asher", [child]),
+            ("1", []),
+            ("A", []),
+            ("random", []),
+        ]:
+            request = self.factory.get("/", data={SEARCH_VAR: search_term})
+            request.user = self.superuser
+            with self.subTest(search_term=search_term):
+                # 1 query for filtered result, 1 for filtered count, 1 for total count.
+                with self.assertNumQueries(3):
+                    cl = model_admin.get_changelist_instance(request)
+                self.assertCountEqual(cl.queryset, expected_result)
+
+    def test_search_with_exact_lookup_relationship_field(self):
+        child = Child.objects.create(name="I am a child", age=11)
+        grandchild = GrandChild.objects.create(name="I am a grandchild", parent=child)
+        model_admin = GrandChildAdmin(GrandChild, custom_site)
+
+        request = self.factory.get("/", data={SEARCH_VAR: "'I am a child'"})
+        request.user = self.superuser
+        cl = model_admin.get_changelist_instance(request)
+        self.assertCountEqual(cl.queryset, [grandchild])
+        for search_term, expected_result in [
+            ("11", [grandchild]),
+            ("'I am a child'", [grandchild]),
+            ("1", []),
+            ("A", []),
+            ("random", []),
+        ]:
+            request = self.factory.get("/", data={SEARCH_VAR: search_term})
+            request.user = self.superuser
+            with self.subTest(search_term=search_term):
+                cl = model_admin.get_changelist_instance(request)
+                self.assertCountEqual(cl.queryset, expected_result)
+
     def test_no_distinct_for_m2m_in_list_filter_without_params(self):
         """
         If a ManyToManyField is in list_filter but isn't in any lookup params,
@@ -1327,6 +1368,20 @@ class ChangeListTests(TestCase):
         check_results_order()
         UnorderedObjectAdmin.ordering = ["id", "bool"]
         check_results_order(ascending=True)
+
+    def test_ordering_from_model_meta(self):
+        Swallow.objects.create(origin="Swallow A", load=4, speed=2)
+        Swallow.objects.create(origin="Swallow B", load=2, speed=1)
+        Swallow.objects.create(origin="Swallow C", load=5, speed=1)
+        m = SwallowAdmin(Swallow, custom_site)
+        request = self._mocked_authenticated_request("/swallow/?o=", self.superuser)
+        changelist = m.get_changelist_instance(request)
+        queryset = changelist.get_queryset(request)
+        self.assertQuerySetEqual(
+            queryset,
+            [(1.0, 2.0), (1.0, 5.0), (2.0, 4.0)],
+            lambda s: (s.speed, s.load),
+        )
 
     def test_deterministic_order_for_model_ordered_by_its_manager(self):
         """

@@ -1046,7 +1046,7 @@ class InHTMLTests(SimpleTestCase):
     def test_long_haystack(self):
         haystack = (
             "<p>This is a very very very very very very very very long message which "
-            "exceedes the max limit of truncation.</p>"
+            "exceeds the max limit of truncation.</p>"
         )
         msg = f"Couldn't find '<b>Hello</b>' in the following response\n{haystack!r}"
         with self.assertRaisesMessage(AssertionError, msg):
@@ -1214,7 +1214,7 @@ class XMLEqualTests(SimpleTestCase):
 
 
 class SkippingExtraTests(TestCase):
-    fixtures = ["should_not_be_loaded.json"]
+    fixtures = ["person.json"]
 
     # HACK: This depends on internals of our TestCase subclasses
     def __call__(self, result=None):
@@ -2186,6 +2186,8 @@ class AllowedDatabaseQueriesTests(SimpleTestCase):
         finally:
             new_connection.validate_thread_sharing()
             new_connection._close()
+            if hasattr(new_connection, "close_pool"):
+                new_connection.close_pool()
 
 
 class DatabaseAliasTests(SimpleTestCase):

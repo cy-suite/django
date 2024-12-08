@@ -9,6 +9,10 @@ from unittest import mock
 
 from django.apps import apps
 from django.core.management import CommandError, call_command
+from django.core.management.commands.makemigrations import (
+    Command as MakeMigrationsCommand,
+)
+from django.core.management.commands.migrate import Command as MigrateCommand
 from django.db import (
     ConnectionHandler,
     DatabaseError,
@@ -19,10 +23,11 @@ from django.db import (
 )
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.backends.utils import truncate_name
+from django.db.migrations.autodetector import MigrationAutodetector
 from django.db.migrations.exceptions import InconsistentMigrationHistory
 from django.db.migrations.recorder import MigrationRecorder
 from django.test import TestCase, override_settings, skipUnlessDBFeature
-from django.test.utils import captured_stdout, extend_sys_path
+from django.test.utils import captured_stdout, extend_sys_path, isolate_apps
 from django.utils import timezone
 from django.utils.version import get_docs_version
 
@@ -2260,6 +2265,19 @@ class MakeMigrationsTests(MigrationTestBase):
         self.assertEqual(out.getvalue(), f"{merge_file}\n")
         self.assertIn(f"Created new merge migration {merge_file}", err.getvalue())
 
+    def test_makemigrations_failure_to_format_code(self):
+        self.assertFormatterFailureCaught("makemigrations", "migrations")
+
+    def test_merge_makemigrations_failure_to_format_code(self):
+        self.assertFormatterFailureCaught("makemigrations", "migrations", empty=True)
+        self.assertFormatterFailureCaught(
+            "makemigrations",
+            "migrations",
+            merge=True,
+            interactive=False,
+            module="migrations.test_migrations_conflict",
+        )
+
     def test_makemigrations_migrations_modules_path_not_exist(self):
         """
         makemigrations creates migrations when specifying a custom location
@@ -3064,6 +3082,11 @@ class SquashMigrationsTests(MigrationTestBase):
             + black_warning,
         )
 
+    def test_failure_to_format_code(self):
+        self.assertFormatterFailureCaught(
+            "squashmigrations", "migrations", "0002", interactive=False
+        )
+
 
 class AppLabelErrorTests(TestCase):
     """
@@ -3296,3 +3319,62 @@ class OptimizeMigrationTests(MigrationTestBase):
         msg = "Cannot find a migration matching 'nonexistent' from app 'migrations'."
         with self.assertRaisesMessage(CommandError, msg):
             call_command("optimizemigration", "migrations", "nonexistent")
+
+    def test_failure_to_format_code(self):
+        self.assertFormatterFailureCaught("optimizemigration", "migrations", "0001")
+
+
+class CustomMigrationCommandTests(MigrationTestBase):
+    @override_settings(
+        MIGRATION_MODULES={"migrations": "migrations.test_migrations"},
+        INSTALLED_APPS=["migrations.migrations_test_apps.migrated_app"],
+    )
+    @isolate_apps("migrations.migrations_test_apps.migrated_app")
+    def test_makemigrations_custom_autodetector(self):
+        class CustomAutodetector(MigrationAutodetector):
+            def changes(self, *args, **kwargs):
+                return []
+
+        class CustomMakeMigrationsCommand(MakeMigrationsCommand):
+            autodetector = CustomAutodetector
+
+        class NewModel(models.Model):
+            class Meta:
+                app_label = "migrated_app"
+
+        out = io.StringIO()
+        command = CustomMakeMigrationsCommand(stdout=out)
+        call_command(command, "migrated_app", stdout=out)
+        self.assertIn("No changes detected", out.getvalue())
+
+    @override_settings(INSTALLED_APPS=["migrations.migrations_test_apps.migrated_app"])
+    @isolate_apps("migrations.migrations_test_apps.migrated_app")
+    def test_migrate_custom_autodetector(self):
+        class CustomAutodetector(MigrationAutodetector):
+            def changes(self, *args, **kwargs):
+                return []
+
+        class CustomMigrateCommand(MigrateCommand):
+            autodetector = CustomAutodetector
+
+        class NewModel(models.Model):
+            class Meta:
+                app_label = "migrated_app"
+
+        out = io.StringIO()
+        command = CustomMigrateCommand(stdout=out)
+
+        out = io.StringIO()
+        try:
+            call_command(command, verbosity=0)
+            call_command(command, stdout=out, no_color=True)
+            command_stdout = out.getvalue().lower()
+            self.assertEqual(
+                "operations to perform:\n"
+                "  apply all migrations: migrated_app\n"
+                "running migrations:\n"
+                "  no migrations to apply.\n",
+                command_stdout,
+            )
+        finally:
+            call_command(command, "migrated_app", "zero", verbosity=0)
