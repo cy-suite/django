@@ -315,7 +315,8 @@ Return values
 If your task function returns something, it can be retrieved from the
 :attr:`django.tasks.TaskResult.return_value` attribute::
 
-    result.return_value  # 42
+    if result.status == ResultStatus.SUCCEEDED:
+        result.return_value  # 42
 
 If the task has not finished executing, or has failed, :exc:`ValueError` is raised.
 
