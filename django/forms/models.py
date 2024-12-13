@@ -1638,6 +1638,7 @@ class ModelMultipleChoiceField(ModelChoiceField):
             )
         for pk in value:
             self.validate_no_null_characters(pk)
+
             try:
                 self.queryset.filter(**{key: pk})
             except (ValueError, TypeError):
