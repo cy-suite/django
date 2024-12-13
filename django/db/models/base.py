@@ -1,6 +1,7 @@
 import copy
 import inspect
 import warnings
+from collections import defaultdict
 from functools import partialmethod
 from itertools import chain
 
@@ -30,6 +31,7 @@ from django.db.models import NOT_PROVIDED, ExpressionWrapper, IntegerField, Max,
 from django.db.models.constants import LOOKUP_SEP
 from django.db.models.deletion import CASCADE, Collector
 from django.db.models.expressions import DatabaseDefault
+from django.db.models.fields.composite import CompositePrimaryKey
 from django.db.models.fields.related import (
     ForeignObjectRel,
     OneToOneField,
@@ -508,7 +510,7 @@ class Model(AltersData, metaclass=ModelBase):
         for field in fields_iter:
             is_related_object = False
             # Virtual field
-            if field.attname not in kwargs and field.column is None or field.generated:
+            if field.column is None or field.generated:
                 continue
             if kwargs:
                 if isinstance(field.remote_field, ForeignObjectRel):
@@ -663,7 +665,11 @@ class Model(AltersData, metaclass=ModelBase):
     pk = property(_get_pk_val, _set_pk_val)
 
     def _is_pk_set(self, meta=None):
-        return self._get_pk_val(meta) is not None
+        pk_val = self._get_pk_val(meta)
+        return not (
+            pk_val is None
+            or (isinstance(pk_val, tuple) and any(f is None for f in pk_val))
+        )
 
     def get_deferred_fields(self):
         """
@@ -720,12 +726,13 @@ class Model(AltersData, metaclass=ModelBase):
         if fields is not None:
             db_instance_qs = db_instance_qs.only(*fields)
         elif deferred_fields:
-            fields = {
-                f.attname
-                for f in self._meta.concrete_fields
-                if f.attname not in deferred_fields
-            }
-            db_instance_qs = db_instance_qs.only(*fields)
+            db_instance_qs = db_instance_qs.only(
+                *{
+                    f.attname
+                    for f in self._meta.concrete_fields
+                    if f.attname not in deferred_fields
+                }
+            )
 
         db_instance = db_instance_qs.get()
         non_loaded_fields = db_instance.get_deferred_fields()
@@ -742,9 +749,9 @@ class Model(AltersData, metaclass=ModelBase):
                     field.delete_cached_value(self)
 
         # Clear cached relations.
-        for field in self._meta.related_objects:
-            if (fields is None or field.name in fields) and field.is_cached(self):
-                field.delete_cached_value(self)
+        for rel in self._meta.related_objects:
+            if (fields is None or rel.name in fields) and rel.is_cached(self):
+                rel.delete_cached_value(self)
 
         # Clear cached private relations.
         for field in self._meta.private_fields:
@@ -1454,6 +1461,11 @@ class Model(AltersData, metaclass=ModelBase):
                 name = f.name
                 if name in exclude:
                     continue
+                if isinstance(f, CompositePrimaryKey):
+                    names = tuple(field.name for field in f.fields)
+                    if exclude.isdisjoint(names):
+                        unique_checks.append((model_class, names))
+                    continue
                 if f.unique:
                     unique_checks.append((model_class, (name,)))
                 if f.unique_for_date and f.unique_for_date not in exclude:
@@ -1728,6 +1740,7 @@ class Model(AltersData, metaclass=ModelBase):
                 *cls._check_constraints(databases),
                 *cls._check_default_pk(),
                 *cls._check_db_table_comment(databases),
+                *cls._check_composite_pk(),
             ]
 
         return errors
@@ -1763,6 +1776,63 @@ class Model(AltersData, metaclass=ModelBase):
                 ),
             ]
         return []
+
+    @classmethod
+    def _check_composite_pk(cls):
+        errors = []
+        meta = cls._meta
+        pk = meta.pk
+
+        if not isinstance(pk, CompositePrimaryKey):
+            return errors
+
+        seen_columns = defaultdict(list)
+
+        for field_name in pk.field_names:
+            hint = None
+
+            try:
+                field = meta.get_field(field_name)
+            except FieldDoesNotExist:
+                field = None
+
+            if not field:
+                hint = f"{field_name!r} is not a valid field."
+            elif not field.column:
+                hint = f"{field_name!r} field has no column."
+            elif field.null:
+                hint = f"{field_name!r} field may not set 'null=True'."
+            elif field.generated:
+                hint = f"{field_name!r} field is a generated field."
+            else:
+                seen_columns[field.column].append(field_name)
+
+            if hint:
+                errors.append(
+                    checks.Error(
+                        f"{field_name!r} cannot be included in the composite primary "
+                        "key.",
+                        hint=hint,
+                        obj=cls,
+                        id="models.E042",
+                    )
+                )
+
+        for column, field_names in seen_columns.items():
+            if len(field_names) > 1:
+                field_name, *rest = field_names
+                duplicates = ", ".join(repr(field) for field in rest)
+                errors.append(
+                    checks.Error(
+                        f"{duplicates} cannot be included in the composite primary "
+                        "key.",
+                        hint=f"{duplicates} and {field_name!r} are the same fields.",
+                        obj=cls,
+                        id="models.E042",
+                    )
+                )
+
+        return errors
 
     @classmethod
     def _check_db_table_comment(cls, databases):

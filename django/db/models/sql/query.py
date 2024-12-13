@@ -627,8 +627,12 @@ class Query(BaseExpression):
         if result is None:
             result = empty_set_result
         else:
-            converters = compiler.get_converters(outer_query.annotation_select.values())
-            result = next(compiler.apply_converters((result,), converters))
+            cols = outer_query.annotation_select.values()
+            converters = compiler.get_converters(cols)
+            rows = compiler.apply_converters((result,), converters)
+            if compiler.has_composite_fields(cols):
+                rows = compiler.composite_fields_to_tuples(rows, cols)
+            result = next(rows)
 
         return dict(zip(outer_query.annotation_select, result))
 
@@ -1021,11 +1025,21 @@ class Query(BaseExpression):
                 if alias == old_alias:
                     table_aliases[pos] = new_alias
                     break
+
+        # 3. Rename the direct external aliases and the ones of combined
+        # queries (union, intersection, difference).
         self.external_aliases = {
             # Table is aliased or it's being changed and thus is aliased.
             change_map.get(alias, alias): (aliased or alias in change_map)
             for alias, aliased in self.external_aliases.items()
         }
+        for combined_query in self.combined_queries:
+            external_change_map = {
+                alias: aliased
+                for alias, aliased in change_map.items()
+                if alias in combined_query.external_aliases
+            }
+            combined_query.change_aliases(external_change_map)
 
     def bump_prefix(self, other_query, exclude=None):
         """

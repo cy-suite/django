@@ -406,8 +406,8 @@ process:
 .. code-block:: pycon
 
     >>> f.base_fields["subject"].label_suffix = "?"
-    >>> another_f = CommentForm(auto_id=False)
-    >>> f.as_div().split("</div>")[0]
+    >>> another_f = ContactForm(auto_id=False)
+    >>> another_f.as_div().split("</div>")[0]
     '<div><label for="id_subject">Subject?</label><input type="text" name="subject" maxlength="100" required id="id_subject">'
 
 Accessing "clean" data
@@ -511,7 +511,7 @@ empty string, because ``nick_name`` is ``CharField``, and ``CharField``\s treat
 empty values as an empty string. Each field type knows what its "blank" value
 is -- e.g., for ``DateField``, it's ``None`` instead of the empty string. For
 full details on each field's behavior in this case, see the "Empty value" note
-for each field in the "Built-in ``Field`` classes" section below.
+for each field in the :ref:`built-in-fields` section below.
 
 You can write code to perform validation for particular form fields (based on
 their name) or for the form as a whole (considering combinations of various
@@ -770,7 +770,7 @@ The template used by ``as_table()``. Default: ``'django/forms/table.html'``.
     >>> f = ContactForm()
     >>> f.as_table()
     '<tr><th><label for="id_subject">Subject:</label></th><td><input id="id_subject" type="text" name="subject" maxlength="100" required></td></tr>\n<tr><th><label for="id_message">Message:</label></th><td><input type="text" name="message" id="id_message" required></td></tr>\n<tr><th><label for="id_sender">Sender:</label></th><td><input type="email" name="sender" id="id_sender" required></td></tr>\n<tr><th><label for="id_cc_myself">Cc myself:</label></th><td><input type="checkbox" name="cc_myself" id="id_cc_myself"></td></tr>'
-    >>> print(f)
+    >>> print(f.as_table())
     <tr><th><label for="id_subject">Subject:</label></th><td><input id="id_subject" type="text" name="subject" maxlength="100" required></td></tr>
     <tr><th><label for="id_message">Message:</label></th><td><input type="text" name="message" id="id_message" required></td></tr>
     <tr><th><label for="id_sender">Sender:</label></th><td><input type="email" name="sender" id="id_sender" required></td></tr>
@@ -1025,12 +1025,16 @@ method you're using:
 Customizing the error list format
 ---------------------------------
 
-.. class:: ErrorList(initlist=None, error_class=None, renderer=None)
+.. class:: ErrorList(initlist=None, error_class=None, renderer=None, field_id=None)
 
     By default, forms use ``django.forms.utils.ErrorList`` to format validation
     errors. ``ErrorList`` is a list like object where ``initlist`` is the
     list of errors. In addition this class has the following attributes and
     methods.
+
+    .. versionchanged:: 5.2
+
+        The ``field_id`` argument was added.
 
     .. attribute:: error_class
 
@@ -1042,6 +1046,16 @@ Customizing the error list format
         Specifies the :doc:`renderer <renderers>` to use for ``ErrorList``.
         Defaults to ``None`` which means to use the default renderer
         specified by the :setting:`FORM_RENDERER` setting.
+
+    .. attribute:: field_id
+
+        .. versionadded:: 5.2
+
+        An ``id`` for the field for which the errors relate. This allows an
+        HTML ``id`` attribute to be added in the error template and is useful
+        to associate the errors with the field. The default template uses the
+        format ``id="{{ field_id }}_error"`` and a value is provided by
+        :meth:`.Form.add_error` using the field's :attr:`~.BoundField.auto_id`.
 
     .. attribute:: template_name
 
@@ -1416,7 +1430,7 @@ Methods of ``BoundField``
 
 .. method:: BoundField.render(template_name=None, context=None, renderer=None)
 
-    The render method is called by ``as_field_group``. All arguments are 
+    The render method is called by ``as_field_group``. All arguments are
     optional and default to:
 
     * ``template_name``: :attr:`.BoundField.template_name`

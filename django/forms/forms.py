@@ -298,7 +298,10 @@ class BaseForm(RenderableFormMixin):
                         error_class="nonfield", renderer=self.renderer
                     )
                 else:
-                    self._errors[field] = self.error_class(renderer=self.renderer)
+                    self._errors[field] = self.error_class(
+                        renderer=self.renderer,
+                        field_id=self[field].auto_id,
+                    )
             self._errors[field].extend(error_list)
             if field in self.cleaned_data:
                 del self.cleaned_data[field]
@@ -313,7 +316,7 @@ class BaseForm(RenderableFormMixin):
         """
         Clean all of self.data and populate self._errors and self.cleaned_data.
         """
-        self._errors = ErrorDict()
+        self._errors = ErrorDict(renderer=self.renderer)
         if not self.is_bound:  # Stop further processing.
             return
         self.cleaned_data = {}
