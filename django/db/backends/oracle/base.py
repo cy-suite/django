@@ -21,7 +21,7 @@ from django.utils.functional import cached_property
 from django.utils.version import get_version_tuple
 
 try:
-    from django.db.backends.oracle.oracledb_any import oracledb as Database
+    import oracledb as Database
 except ImportError as e:
     raise ImproperlyConfigured(f"Error loading oracledb module: {e}")
 
