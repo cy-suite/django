@@ -2,6 +2,7 @@ from ctypes import c_uint
 
 from django.contrib.gis import gdal
 from django.contrib.gis.geos import prototypes as capi
+from django.contrib.gis.geos.coordseq import GEOSCoordSeq
 from django.contrib.gis.geos.error import GEOSException
 from django.contrib.gis.geos.geometry import GEOSGeometry
 
@@ -11,7 +12,7 @@ class Point(GEOSGeometry):
     _maxlength = 3
     has_cs = True
 
-    def __init__(self, x=None, y=None, z=None, srid=None):
+    def __init__(self, x=None, y=None, z=None, m=None, srid=None):
         """
         The Point object may be initialized with either a tuple, or individual
         parameters.
@@ -19,6 +20,7 @@ class Point(GEOSGeometry):
         For example:
         >>> p = Point((5, 23))  # 2D point, passed in as a tuple
         >>> p = Point(5, 23, 8)  # 3D point, passed in with individual parameters
+        >>> p = Point(5, 23, 8, 0)  # 4D point, passed in with individual parameters
         """
         if x is None:
             coords = []
@@ -26,8 +28,11 @@ class Point(GEOSGeometry):
             # Here a tuple or list was passed in under the `x` parameter.
             coords = x
         elif isinstance(x, (float, int)) and isinstance(y, (float, int)):
-            # Here X, Y, and (optionally) Z were passed in individually, as parameters.
-            if isinstance(z, (float, int)):
+            # Here X, Y, and (optionally) Z and M were passed in individually,
+            # as parameters.
+            if isinstance(z, (float, int)) and isinstance(m, (float, int)):
+                coords = [x, y, z, m]
+            elif isinstance(z, (float, int)):
                 coords = [x, y, z]
             else:
                 coords = [x, y]
@@ -58,22 +63,21 @@ class Point(GEOSGeometry):
     @classmethod
     def _create_point(cls, ndim, coords):
         """
-        Create a coordinate sequence, set X, Y, [Z], and create point
+        Create a coordinate sequence, set X, Y, [Z], [M] and create point
         """
         if not ndim:
             return capi.create_point(None)
 
-        if ndim < 2 or ndim > 3:
+        if ndim < 2 or ndim > 4:
             raise TypeError("Invalid point dimension: %s" % ndim)
 
-        cs = capi.create_cs(c_uint(1), c_uint(ndim))
-        i = iter(coords)
-        capi.cs_setx(cs, 0, next(i))
-        capi.cs_sety(cs, 0, next(i))
-        if ndim == 3:
-            capi.cs_setz(cs, 0, next(i))
-
-        return capi.create_point(cs)
+        cs = GEOSCoordSeq(
+            capi.create_cs(c_uint(1), c_uint(ndim)),
+            z=bool(ndim >= 3),
+            m=bool(ndim == 4),
+        )
+        cs[0] = coords
+        return capi.create_point(cs.ptr)
 
     def _set_list(self, length, items):
         ptr = self._create_point(length, items)
@@ -97,10 +101,12 @@ class Point(GEOSGeometry):
             yield self[i]
 
     def __len__(self):
-        "Return the number of dimensions for this Point (either 0, 2 or 3)."
+        "Return the number of dimensions for this Point (either 0, 2, 3, or 4)."
         if self.empty:
             return 0
-        if self.hasz:
+        elif self.hasm:
+            return 4
+        elif self.hasz:
             return 3
         else:
             return 2
@@ -146,6 +152,18 @@ class Point(GEOSGeometry):
         if not self.hasz:
             raise GEOSException("Cannot set Z on 2D Point.")
         self._cs.setOrdinate(2, 0, value)
+
+    @property
+    def m(self):
+        "Return the M component of the Point."
+        return self._cs.getOrdinate(3, 0) if self.hasm else None
+
+    @m.setter
+    def m(self, value):
+        "Set the M component of the Point."
+        if not self.hasm:
+            raise GEOSException("Cannot set M on 2D or 3D Point.")
+        self._cs.setOrdinate(3, 0, value)
 
     # ### Tuple setting and retrieval routines. ###
     @property

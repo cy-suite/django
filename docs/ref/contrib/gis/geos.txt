@@ -1093,7 +1093,8 @@ include the SRID value (in other words, EWKB).
 
     This property may be set to change the output dimension of the geometry
     representation.  In other words, if you have a 3D geometry then set to 3
-    so that the Z value is included in the WKB.
+    so that the Z value is included in the WKB. If you have a 4D geometry then
+    set to 4 so that the M value is included in the WKB.
 
     ============ ===========================
     Outdim Value Description

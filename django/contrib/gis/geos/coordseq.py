@@ -18,12 +18,13 @@ class GEOSCoordSeq(GEOSBase):
 
     ptr_type = CS_PTR
 
-    def __init__(self, ptr, z=False):
+    def __init__(self, ptr, z=False, m=False):
         "Initialize from a GEOS pointer."
         if not isinstance(ptr, CS_PTR):
             raise TypeError("Coordinate sequence should initialize with a CS_PTR.")
         self._ptr = ptr
         self._z = z
+        self._m = m
 
     def __iter__(self):
         "Iterate over each point in the coordinate sequence."
@@ -55,7 +56,10 @@ class GEOSCoordSeq(GEOSBase):
                 "Must set coordinate with a sequence (list, tuple, or numpy array)."
             )
         # Checking the dims of the input
-        if self.dims == 3 and self._z:
+        if self.dims == 4 and self._m:
+            n_args = 4
+            point_setter = self._set_point_4d
+        elif self.dims == 3 and self._z:
             n_args = 3
             point_setter = self._set_point_3d
         else:
@@ -74,7 +78,7 @@ class GEOSCoordSeq(GEOSBase):
 
     def _checkdim(self, dim):
         "Check the given dimension."
-        if dim < 0 or dim > 2:
+        if dim < 0 or dim > 3:
             raise GEOSException('invalid ordinate dimension "%d"' % dim)
 
     def _get_x(self, index):
@@ -97,13 +101,21 @@ class GEOSCoordSeq(GEOSBase):
 
     @property
     def _point_getter(self):
-        return self._get_point_3d if self.dims == 3 and self._z else self._get_point_2d
+        if self.dims == 4 and self._m:
+            return self._get_point_4d
+        elif self.dims == 3 and self._z:
+            return self._get_point_3d
+        else:
+            return self._get_point_2d
 
     def _get_point_2d(self, index):
         return (self._get_x(index), self._get_y(index))
 
     def _get_point_3d(self, index):
         return (self._get_x(index), self._get_y(index), self._get_z(index))
+
+    def _get_point_4d(self, index):
+        return (self.getX(index), self.getY(index), self.getZ(index), self.getM(index))
 
     def _set_point_2d(self, index, value):
         x, y = value
@@ -115,6 +127,13 @@ class GEOSCoordSeq(GEOSBase):
         self._set_x(index, x)
         self._set_y(index, y)
         self._set_z(index, z)
+
+    def _set_point_4d(self, index, value):
+        x, y, z, m = value
+        self.setX(index, x)
+        self.setY(index, y)
+        self.setZ(index, z)
+        self.setM(index, m)
 
     # #### Ordinate getting and setting routines ####
     def getOrdinate(self, dimension, index):
@@ -153,6 +172,14 @@ class GEOSCoordSeq(GEOSBase):
         "Set Z with the value at the given index."
         self.setOrdinate(2, index, value)
 
+    def getM(self, index):
+        "Get M with the value at the given index."
+        return self.getOrdinate(3, index)
+
+    def setM(self, index, value):
+        "Set M with the value at the given index."
+        self.setOrdinate(3, index, value)
+
     # ### Dimensions ###
     @property
     def size(self):
@@ -171,6 +198,14 @@ class GEOSCoordSeq(GEOSBase):
         inherited from the parent Geometry.
         """
         return self._z
+
+    @property
+    def hasm(self):
+        """
+        Return whether this coordinate sequence is 4D. This property value is
+        inherited from the parent Geometry.
+        """
+        return self._m
 
     # ### Other Methods ###
     def clone(self):

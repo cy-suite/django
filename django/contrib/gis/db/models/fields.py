@@ -307,8 +307,10 @@ class GeometryField(BaseSpatialField):
             "srid": self.srid,
             **kwargs,
         }
-        if self.dim > 2 and not getattr(
-            defaults["form_class"].widget, "supports_3d", False
+        if (
+            self.dim > 2
+            and not getattr(defaults["form_class"].widget, "supports_3d", False)
+            and not getattr(defaults["form_class"].widget, "supports_4d", False)
         ):
             defaults.setdefault("widget", forms.Textarea)
         return super().formfield(**defaults)
