@@ -326,6 +326,12 @@ Models
 * :meth:`.QuerySet.explain` now supports the ``memory`` and ``serialize``
   options on PostgreSQL 17+.
 
+* The new :class:`~django.db.models.functions.JSONSet` allows inserts or
+  updates to specific keys within a :class:`~django.db.models.JSONField`.
+
+* The new :class:`~django.db.models.functions.JSONRemove` allows removals of
+  specified paths from a :class:`~django.db.models.JSONField`.
+
 Requests and Responses
 ~~~~~~~~~~~~~~~~~~~~~~
 
