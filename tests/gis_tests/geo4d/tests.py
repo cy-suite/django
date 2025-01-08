@@ -1,6 +1,8 @@
 import time
+from unittest import skipIf
 
 from django.contrib.gis.geos import GEOSGeometry, LineString, Point
+from django.contrib.gis.geos.libgeos import geos_version_tuple
 from django.test import TestCase, skipUnlessDBFeature
 
 from ..geo3d.models import Interstate3D, InterstateProj3D
@@ -36,6 +38,7 @@ class GeoLoadingHelper:
 
 
 @skipUnlessDBFeature("supports_4d_storage")
+@skipIf(geos_version_tuple() < (3, 12), "GEOS >= 3.12.0 is required")
 class Geo4DTest(GeoLoadingHelper, TestCase):
     """
     Only a subset of the PostGIS routines are 4D-enabled, and this TestCase

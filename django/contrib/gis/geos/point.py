@@ -2,9 +2,9 @@ from ctypes import c_uint
 
 from django.contrib.gis import gdal
 from django.contrib.gis.geos import prototypes as capi
-from django.contrib.gis.geos.coordseq import GEOSCoordSeq
 from django.contrib.gis.geos.error import GEOSException
 from django.contrib.gis.geos.geometry import GEOSGeometry
+from django.contrib.gis.geos.libgeos import geos_version_tuple
 
 
 class Point(GEOSGeometry):
@@ -71,13 +71,15 @@ class Point(GEOSGeometry):
         if ndim < 2 or ndim > 4:
             raise TypeError("Invalid point dimension: %s" % ndim)
 
-        cs = GEOSCoordSeq(
-            capi.create_cs(c_uint(1), c_uint(ndim)),
-            z=bool(ndim >= 3),
-            m=bool(ndim == 4),
-        )
-        cs[0] = coords
-        return capi.create_point(cs.ptr)
+        cs = capi.create_cs(c_uint(1), c_uint(ndim))
+        i = iter(coords)
+        capi.cs_setx(cs, 0, next(i))
+        capi.cs_sety(cs, 0, next(i))
+        if ndim >= 3:
+            capi.cs_setz(cs, 0, next(i))
+        if ndim == 4 and geos_version_tuple() > (3, 12):
+            capi.cs_setordinate(cs, 0, 3, next(i))
+        return capi.create_point(cs)
 
     def _set_list(self, length, items):
         ptr = self._create_point(length, items)

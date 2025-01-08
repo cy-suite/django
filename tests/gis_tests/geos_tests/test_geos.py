@@ -58,21 +58,17 @@ class GEOSTest(SimpleTestCase, TestDataMixin):
         # For testing HEX(EWKB).
         ogc_hex = b"01010000000000000000000000000000000000F03F"
         ogc_hex_3d = b"01010000800000000000000000000000000000F03F0000000000000040"
-        ogc_hex_4d = b"01010000C00000000000000000000000000000F03F00000000000000400000000000000000"  # noqa: E501
         # `SELECT ST_AsHEXEWKB(ST_GeomFromText('POINT(0 1)', 4326));`
         hexewkb_2d = b"0101000020E61000000000000000000000000000000000F03F"
         # `SELECT ST_AsHEXEWKB(ST_GeomFromEWKT('SRID=4326;POINT(0 1 2)'));`
         hexewkb_3d = b"01010000A0E61000000000000000000000000000000000F03F0000000000000040"  # noqa: E501
-        hexewkb_4d = b"01010000E0E61000000000000000000000000000000000F03F00000000000000400000000000000000"  # noqa: E501
 
         pnt_2d = Point(0, 1, srid=4326)
         pnt_3d = Point(0, 1, 2, srid=4326)
-        pnt_4d = Point(0, 1, 2, 0, srid=4326)
 
         # OGC-compliant HEX will not have SRID value.
         self.assertEqual(ogc_hex, pnt_2d.hex)
         self.assertEqual(ogc_hex_3d, pnt_3d.hex)
-        self.assertEqual(ogc_hex_4d, pnt_4d.hex)
 
         # HEXEWKB should be appropriate for its dimension -- have to use an
         # a WKBWriter w/dimension set accordingly, else GEOS will insert
@@ -80,13 +76,10 @@ class GEOSTest(SimpleTestCase, TestDataMixin):
         self.assertEqual(hexewkb_2d, pnt_2d.hexewkb)
         self.assertEqual(hexewkb_3d, pnt_3d.hexewkb)
         self.assertIs(GEOSGeometry(hexewkb_3d).hasz, True)
-        self.assertEqual(hexewkb_4d, pnt_4d.hexewkb)
-        self.assertIs(GEOSGeometry(hexewkb_4d).hasm, True)
 
         # Same for EWKB.
         self.assertEqual(memoryview(a2b_hex(hexewkb_2d)), pnt_2d.ewkb)
         self.assertEqual(memoryview(a2b_hex(hexewkb_3d)), pnt_3d.ewkb)
-        self.assertEqual(memoryview(a2b_hex(hexewkb_4d)), pnt_4d.ewkb)
 
         # Redundant sanity check.
         self.assertEqual(4326, GEOSGeometry(hexewkb_2d).srid)
@@ -1128,6 +1121,7 @@ class GEOSTest(SimpleTestCase, TestDataMixin):
         ls[0] = (1.0, 2.0, 3.0)
         self.assertEqual((1.0, 2.0, 3.0), ls[0])
 
+    @skipIf(geos_version_tuple() < (3, 12), "GEOS >= 3.12.0 is required")
     def test_4d(self):
         "Testing four-dimensional geometries."
         # Testing a 4D Point
