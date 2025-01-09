@@ -5,6 +5,7 @@ The main QuerySet implementation. This provides the public API for the ORM.
 import copy
 import operator
 import warnings
+from functools import reduce
 from itertools import chain, islice
 
 from asgiref.sync import sync_to_async
@@ -20,7 +21,7 @@ from django.db import (
     router,
     transaction,
 )
-from django.db.models import AutoField, DateField, DateTimeField, Field, sql
+from django.db.models import AutoField, DateField, DateTimeField, Field, sql, Max
 from django.db.models.constants import LOOKUP_SEP, OnConflict
 from django.db.models.deletion import Collector
 from django.db.models.expressions import Case, F, Value, When
@@ -799,7 +800,53 @@ class QuerySet(AltersData):
         self._for_write = True
         fields = [f for f in opts.concrete_fields if not f.generated]
         objs = list(objs)
+
+        # Handle order_with_respect_to if present
+        if order_wrt := self.model._meta.order_with_respect_to:
+            if objs:  # Only process if we have objects
+                get_filter_kwargs_for_object = order_wrt.get_filter_kwargs_for_object
+                attnames = list(get_filter_kwargs_for_object(objs[0]).keys())
+
+                # Collect unique combinations of order_with_respect_to field values
+                values = {
+                    tuple(get_filter_kwargs_for_object(obj).values())
+                    for obj in objs
+                }
+
+                # Build OR query for all value combinations
+                filters = reduce(operator.or_, (
+                    Q(**dict(zip(attnames, vals)))
+                    for vals in values
+                ))
+
+                # Get maximum _order for each group
+                max_orders = (
+                    self.model._base_manager.using(self.db)
+                    .values(*attnames)
+                    .filter(filters)
+                    .annotate(_order__max=Max("_order", default=0))
+                )
+
+                # Create mapping of group values to max order
+                max_orders_map = {
+                    tuple(max_order[name] for name in attnames): max_order[
+                        "_order__max"]
+                    for max_order in max_orders
+                }
+
+                # Assign _order values to new objects
+                for obj in objs:
+                    filter_kwargs = get_filter_kwargs_for_object(obj)
+                    group_key = tuple(
+                        value.id if hasattr(value, 'id') else value
+                        for value in filter_kwargs.values()
+                    )
+                    curr_max = max_orders_map.get(group_key, -1)
+                    max_orders_map[group_key] = curr_max + 1
+                    obj._order = curr_max + 1
+
         self._prepare_for_bulk_create(objs)
+
         with transaction.atomic(using=self.db, savepoint=False):
             objs_without_pk, objs_with_pk = partition(lambda o: o._is_pk_set(), objs)
             if objs_with_pk:
