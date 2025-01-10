@@ -56,10 +56,10 @@ class GEOSCoordSeq(GEOSBase):
                 "Must set coordinate with a sequence (list, tuple, or numpy array)."
             )
         # Checking the dims of the input
-        if self.dims == 4 and self._m:
+        if self.dims == 4 and self._z and self._m:
             n_args = 4
             point_setter = self._set_point_4d
-        elif self.dims == 3 and self._z:
+        elif self.dims == 3 and (self._z or self._m):
             n_args = 3
             point_setter = self._set_point_3d
         else:
@@ -101,9 +101,9 @@ class GEOSCoordSeq(GEOSBase):
 
     @property
     def _point_getter(self):
-        if self.dims == 4 and self._m:
+        if self.dims == 4 and self._z and self._m:
             return self._get_point_4d
-        elif self.dims == 3 and self._z:
+        elif self.dims == 3 and (self._z or self._m):
             return self._get_point_3d
         else:
             return self._get_point_2d
@@ -112,6 +112,8 @@ class GEOSCoordSeq(GEOSBase):
         return (self._get_x(index), self._get_y(index))
 
     def _get_point_3d(self, index):
+        if self._m:
+            return (self.getX(index), self.getY(index), self.getM(index))
         return (self._get_x(index), self._get_y(index), self._get_z(index))
 
     def _get_point_4d(self, index):
@@ -123,10 +125,13 @@ class GEOSCoordSeq(GEOSBase):
         self._set_y(index, y)
 
     def _set_point_3d(self, index, value):
-        x, y, z = value
+        x, y, third_dim = value
         self._set_x(index, x)
         self._set_y(index, y)
-        self._set_z(index, z)
+        if self._m:
+            self.setM(index, third_dim)
+        else:
+            self._set_z(index, third_dim)
 
     def _set_point_4d(self, index, value):
         x, y, z, m = value
@@ -194,7 +199,7 @@ class GEOSCoordSeq(GEOSBase):
     @property
     def hasz(self):
         """
-        Return whether this coordinate sequence is 3D. This property value is
+        Return whether this coordinate sequence has Z dimension. This property value is
         inherited from the parent Geometry.
         """
         return self._z
@@ -202,7 +207,7 @@ class GEOSCoordSeq(GEOSBase):
     @property
     def hasm(self):
         """
-        Return whether this coordinate sequence is 4D. This property value is
+        Return whether this coordinate sequence has M dimension. This property value is
         inherited from the parent Geometry.
         """
         return self._m

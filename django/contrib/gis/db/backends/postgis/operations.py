@@ -244,8 +244,10 @@ class PostGISOperations(BaseSpatialOperations, DatabaseOperations):
             return "raster"
 
         # Type-based geometries.
-        if f.dim == 3:
+        if f.dim == 3 and not f.is_measured:
             geom_type = f.geom_type + "Z"
+        elif f.dim == 3 and f.is_measured:
+            geom_type = f.geom_type + "M"
         elif f.dim == 4:
             geom_type = f.geom_type + "ZM"
         else:

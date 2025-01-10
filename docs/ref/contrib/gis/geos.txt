@@ -362,11 +362,6 @@ another object.
     Essentially the SRID is prepended to the WKT representation, for example
     ``SRID=4326;POINT(5 23)``.
 
-    .. note::
-
-        The output from this property does not include the 3dm, 3dz, and 4d
-        information that PostGIS supports in its EWKT representations.
-
 .. attribute:: GEOSGeometry.hex
 
     Returns the WKB of this Geometry in hexadecimal form.  Please note
@@ -1101,6 +1096,7 @@ include the SRID value (in other words, EWKB).
     ============ ===========================
     2            The default, output 2D WKB.
     3            Output 3D WKB.
+    4            Output 4D WKB.
     ============ ===========================
 
     Example:

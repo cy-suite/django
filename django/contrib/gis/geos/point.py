@@ -4,7 +4,6 @@ from django.contrib.gis import gdal
 from django.contrib.gis.geos import prototypes as capi
 from django.contrib.gis.geos.error import GEOSException
 from django.contrib.gis.geos.geometry import GEOSGeometry
-from django.contrib.gis.geos.libgeos import geos_version_tuple
 
 
 class Point(GEOSGeometry):
@@ -22,10 +21,13 @@ class Point(GEOSGeometry):
         >>> p = Point(5, 23, 8)  # 3D point, passed in with individual parameters
         >>> p = Point(5, 23, 8, 0)  # 4D point, passed in with individual parameters
         """
+        is_measured = isinstance(m, (float, int))
         if x is None:
             coords = []
         elif isinstance(x, (tuple, list)):
             # Here a tuple or list was passed in under the `x` parameter.
+            # When a three element tuple or list is provided we do not know if the last
+            # is element the Z dimension or M dimension and default to assuming Z.
             coords = x
         elif isinstance(x, (float, int)) and isinstance(y, (float, int)):
             # Here X, Y, and (optionally) Z and M were passed in individually,
@@ -34,12 +36,14 @@ class Point(GEOSGeometry):
                 coords = [x, y, z, m]
             elif isinstance(z, (float, int)):
                 coords = [x, y, z]
+            elif isinstance(m, (float, int)):
+                coords = [x, y, m]
             else:
                 coords = [x, y]
         else:
             raise TypeError("Invalid parameters given for Point initialization.")
 
-        point = self._create_point(len(coords), coords)
+        point = self._create_point(len(coords), coords, is_measured=is_measured)
 
         # Initializing using the address returned from the GEOS
         #  createPoint factory.
@@ -61,7 +65,7 @@ class Point(GEOSGeometry):
         return cls._create_point(None, None)
 
     @classmethod
-    def _create_point(cls, ndim, coords):
+    def _create_point(cls, ndim, coords, is_measured=False):
         """
         Create a coordinate sequence, set X, Y, [Z], [M] and create point
         """
@@ -75,9 +79,12 @@ class Point(GEOSGeometry):
         i = iter(coords)
         capi.cs_setx(cs, 0, next(i))
         capi.cs_sety(cs, 0, next(i))
-        if ndim >= 3:
+        if ndim == 3 and is_measured is False:
             capi.cs_setz(cs, 0, next(i))
-        if ndim == 4 and geos_version_tuple() > (3, 12):
+        if ndim == 3 and is_measured is True:
+            capi.cs_setordinate(cs, 0, 3, next(i))
+        if ndim == 4:
+            capi.cs_setz(cs, 0, next(i))
             capi.cs_setordinate(cs, 0, 3, next(i))
         return capi.create_point(cs)
 

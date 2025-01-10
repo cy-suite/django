@@ -80,9 +80,18 @@ class LineString(LinearGeometryMixin, GEOSGeometry):
 
         # Creating a coordinate sequence object because it is easier to
         # set the points using its methods.
-        cs = GEOSCoordSeq(
-            capi.create_cs(ncoords, ndim), z=bool(ndim >= 3), m=bool(ndim == 4)
-        )
+        if ndim == 4:
+            z = True
+            m = True
+        elif ndim == 3:
+            # Default to the third dimension as Z unless explicitly passed to be M.
+            is_measured = kwargs.get("is_measured", False)
+            z = not is_measured
+            m = is_measured
+        else:
+            z = False
+            m = False
+        cs = GEOSCoordSeq(capi.create_cs(ncoords, ndim), z=z, m=m)
         if ndim == 4:
             point_setter = cs._set_point_4d
         elif ndim == 3:

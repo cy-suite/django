@@ -399,9 +399,9 @@ class GEOSGeometryBase(GEOSBase):
     @property
     def wkt(self):
         "Return the WKT (Well-Known Text) representation of this Geometry."
-        if self.hasm:
+        if self.hasz and self.hasm:
             dim = 4
-        elif self.hasz:
+        elif self.hasz or self.hasm:
             dim = 3
         else:
             dim = 2
@@ -416,9 +416,9 @@ class GEOSGeometryBase(GEOSBase):
         """
         # A possible faster, all-python, implementation:
         #  str(self.wkb).encode('hex')
-        if self.hasm:
+        if self.hasz and self.hasm:
             dim = 4
-        elif self.hasz:
+        elif self.hasz or self.hasm:
             dim = 3
         else:
             dim = 2
@@ -431,9 +431,9 @@ class GEOSGeometryBase(GEOSBase):
         extension of the WKB specification that includes SRID value that are
         a part of this geometry.
         """
-        if self.hasm:
+        if self.hasz and self.hasm:
             dim = 4
-        elif self.hasz:
+        elif self.hasz or self.hasm:
             dim = 3
         else:
             dim = 2
@@ -455,9 +455,9 @@ class GEOSGeometryBase(GEOSBase):
         as a Python memoryview. SRID and Z values are not included, use the
         `ewkb` property instead.
         """
-        if self.hasm:
+        if self.hasz and self.hasm:
             dim = 4
-        elif self.hasz:
+        elif self.hasz or self.hasm:
             dim = 3
         else:
             dim = 2
@@ -470,9 +470,9 @@ class GEOSGeometryBase(GEOSBase):
         This is an extension of the WKB specification that includes any SRID
         value that are a part of this geometry.
         """
-        if self.hasm:
+        if self.hasz and self.hasm:
             dim = 4
-        elif self.hasz:
+        elif self.hasz or self.hasm:
             dim = 3
         else:
             dim = 2
