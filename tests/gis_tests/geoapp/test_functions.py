@@ -618,7 +618,9 @@ class GISFunctionsTests(FuncTestMixin, TestCase):
         tests = [{"angle": angle}, {"angle": angle, "origin": Point(0, 0)}]
         for params in tests:
             with self.subTest(params=params):
-                qs = Country.objects.annotate(rotated=functions.Rotate("mpoly", **params))
+                qs = Country.objects.annotate(
+                    rotated=functions.Rotate("mpoly", **params)
+                )
                 for country in qs:
                     for p1, p2 in zip(country.mpoly, country.rotated):
                         for r1, r2 in zip(p1, p2):
